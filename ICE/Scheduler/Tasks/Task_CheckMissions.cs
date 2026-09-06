@@ -174,6 +174,23 @@ namespace ICE.Scheduler.Tasks
                 $"Current TerritoryID: {playerTerritory}");
 
             var modeSelected = Mission_Settings.Mode;
+            var levelingJob = Mission_Settings.SelectedJob;
+            var levelingTier = Player.GetLevel((Job)levelingJob) >= 90
+                ? 90
+                : Player.GetLevel((Job)levelingJob) >= 50 ? 50 : 10;
+
+            // Leveling mode normally uses the curated QuickLevelList. If the user has
+            // enabled any standard mission for the current job on this hub, use those
+            // selections as the leveling candidate set instead.
+            var hasEnabledLevelingMissions = modeSelected == ModeSelect.LevelMode
+                && CosmicHelper.SheetMissionDict.Any(entry =>
+                    entry.Value.TerritoryId == playerTerritory
+                    && !entry.Value.IsProvisional
+                    && !entry.Value.IsCritical
+                    && entry.Value.Jobs.Contains(levelingJob)
+                    && C.MissionConfig.TryGetValue(entry.Key, out var entryConfig)
+                    && entryConfig.Enabled);
+
             foreach (var mission in CosmicHelper.SheetMissionDict)
             {
                 if (mission.Value.TerritoryId != Player.Territory.RowId)
@@ -185,13 +202,12 @@ namespace ICE.Scheduler.Tasks
 
                 if (C.MissionConfig.TryGetValue(missionId, out var config))
                 {
-                    if (modeSelected == ModeSelect.LevelMode && CosmicHelper.QuickLevelList.Contains(mission.Key))
+                    if (modeSelected == ModeSelect.LevelMode
+                        && (hasEnabledLevelingMissions ? config.Enabled : CosmicHelper.QuickLevelList.Contains(mission.Key)))
                     {
-                        var job = Mission_Settings.SelectedJob;
-                        var jobLevel = Player.GetLevel((Job)job);
                         var missionLevel = mission.Value.Level;
 
-                        if (!mission.Value.Jobs.Contains(job))
+                        if (!mission.Value.Jobs.Contains(levelingJob))
                             continue;
 
                         // Short end of it all, making sure to see what tier the player should be doing
@@ -199,9 +215,7 @@ namespace ICE.Scheduler.Tasks
                         // 90+ = 90
                         // 50-89 = 50
                         // 10-49 = 10
-                        int playerTier = jobLevel >= 90 ? 90 : jobLevel >= 50 ? 50 : 10;
-
-                        if (missionLevel != playerTier)
+                        if (missionLevel != levelingTier)
                             continue;
                         else
                         {

@@ -441,7 +441,6 @@ public static class CosmicTables
 
 
             bool disabled = C.SelectedMode == ModeSelect.MissionGoldMode
-                         || C.SelectedMode == ModeSelect.LevelMode
                          || (C.SelectedMode == ModeSelect.RelicMode && !C.XPRelicOnlyEnabled);
 
             if (!disabled)
@@ -1738,7 +1737,6 @@ public static class CosmicTables
 
 
             bool disabled = C.SelectedMode == ModeSelect.MissionGoldMode
-                         || C.SelectedMode == ModeSelect.LevelMode
                          || (C.SelectedMode == ModeSelect.RelicMode && !C.XPRelicOnlyEnabled);
 
             if (!disabled)
