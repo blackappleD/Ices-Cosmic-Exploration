@@ -1,6 +1,7 @@
 {
   "Author": "Ice, QiongHHHZZZ(汉化&适配), blackappleD(定制化开发)",
   "Name": "Ice's Cosmic Exploration (ICE)",
+  "InternalName": "ICE-bld",
   "Punchline": "欢迎来到月球。",
   "Description": "国服维护版宇宙探索插件，支持采集、制作、钓鱼与任务自动化。",
   "ApplicableVersion": "any",
