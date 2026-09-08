@@ -49,8 +49,8 @@ jobs:
       - name: Ensure artifact exists
         shell: pwsh
         run: |
-          $source = 'ICE/bin/Release/ICE/latest.zip'
-          $target = 'ICE/bin/Release/ICE/ICE.zip'
+          $source = 'ICE/bin/Release/ICE-bld/latest.zip'
+          $target = 'ICE/bin/Release/ICE-bld/ICE.zip'
           if (!(Test-Path $source)) {
             throw "未找到构建产物: $source"
           }

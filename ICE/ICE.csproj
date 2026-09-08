@@ -2,9 +2,10 @@
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
 
 	<PropertyGroup>
-		<Version>1.0.0.2003</Version>
-		<AssemblyVersion>1.0.0.2003</AssemblyVersion>
-		<FileVersion>1.0.0.2003</FileVersion>
+		<Version>1.0.0.2004</Version>
+		<AssemblyVersion>1.0.0.2004</AssemblyVersion>
+		<FileVersion>1.0.0.2004</FileVersion>
+		<AssemblyName>ICE-bld</AssemblyName>
 		<Description>Who said we couldn't explore the moon!.</Description>
 		<PackageProjectUrl>https://github.com/goatcorp/ICE</PackageProjectUrl>
 		<PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
@@ -30,7 +31,7 @@
 	</Target>
 
 	<ItemGroup>
-		<Content Include="ICE.json" />
+		<Content Include="ICE-bld.json" />
 		<EmbeddedResource Include="Resources\TrophyIcons\bronze_trophy.png" />
 		<EmbeddedResource Include="Resources\TrophyIcons\gold_trophy.png" />
 		<EmbeddedResource Include="Resources\TrophyIcons\silver_trophy.png" />
