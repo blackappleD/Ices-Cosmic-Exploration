@@ -60,7 +60,7 @@ jobs:
       - name: Upload ICE.zip to release
         uses: softprops/action-gh-release@v2
         with:
-          files: ICE/bin/Release/ICE/ICE.zip
+          files: ICE/bin/Release/ICE-bld/ICE.zip
           name: ${{ github.ref_name }}
           fail_on_unmatched_files: true
           append_body: true
