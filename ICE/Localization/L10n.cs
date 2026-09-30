@@ -592,6 +592,8 @@ internal static class L10n
         ["Select Mounting Option"] = "选择骑乘方案",
         ["Search"] = "搜索",
         ["Search..."] = "搜索...",
+        ["No settings match \"{0}\"."] = "没有与“{0}”匹配的设置。",
+        ["You've either hit the Lunar Credit threshold, or gone above it. Stopping"] = "你已经达到或超过月球信用点阈值，正在停止。",
         ["Select search column."] = "选择搜索列。",
         ["Previous"] = "上一项",
         ["Use mount outside mission"] = "任务外使用坐骑",
