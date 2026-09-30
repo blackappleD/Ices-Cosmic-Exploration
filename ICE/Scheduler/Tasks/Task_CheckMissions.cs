@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using static ECommons.UIHelpers.AddonMasterImplementations.AddonMaster;
+using static ICE.Localization.L10n;
 
 namespace ICE.Scheduler.Tasks
 {
@@ -578,7 +579,25 @@ namespace ICE.Scheduler.Tasks
                     if (mode == ModeSelect.LevelMode)
                     {
                         var levelingMission = missionList.FirstOrDefault();
-                        IceLogging.Verbose($"Leveling Mission: Job: {Mission_Settings.SelectedJob} | Mission: {levelingMission} | Level: {CosmicHelper.SheetMissionDict[levelingMission].Level}", debugOnly: true);
+                        var levelingInfo = CosmicHelper.SheetMissionDict[levelingMission];
+
+                        IceLogging.Verbose($"Leveling Mission: Job: {Mission_Settings.SelectedJob} | Mission: {levelingMission} | Level: {levelingInfo.Level}");
+
+                        if (levelingInfo.Attributes.HasFlag(MissionAttributes.Collectables) && !QuestCheck.CollectablesUnlocked())
+                        {
+                            string warningText = T("We are missing the ability to do collectables... and we can't continue on without them. \n") +
+                                T("Please go to Mor Dhona and complete the quest: No longer a collectable");
+
+                            IceLogging.Info(warningText, tag);
+                            Svc.Chat.Print(new()
+                            {
+                                Message = warningText,
+                                Name = "I.C.E.",
+                                Type = Dalamud.Game.Text.XivChatType.Notice
+                            });
+                            SchedulerMain.DisablePlugin();
+                        }
+
                         if (basicMissionList.Contains(levelingMission))
                         {
                             LogInfo(levelingMission);
