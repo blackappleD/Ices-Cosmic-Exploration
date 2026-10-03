@@ -967,9 +967,33 @@ namespace ICE.Scheduler.Tasks
             P.TaskManager.EnqueueMulti
                 (
                     new(() => CheckForMovementRequired(missionId), "Checking to see if we need to move to mission"),
-                    new(() => Mission_ChangeJob(missionId), "Changing to correct job for mission"),
-                    new(() => GrabMission(missionId), "Grabbing mission to initate")
+                    new(() => Mission_ChangeJob(missionId), "Changing to correct job for mission")
                 );
+
+            if (Mission_Settings.Mode == ModeSelect.LevelMode && Utils.HasPlugin("Stylist"))
+            {
+                P.TaskManager.Enqueue(() => Mission_StylistCheck(), "Equipping recommended gear with Stylist");
+                P.TaskManager.EnqueueDelay(500);
+            }
+
+            P.TaskManager.Enqueue(() => GrabMission(missionId), "Grabbing mission to initate");
+        }
+        private static bool? Mission_StylistCheck()
+        {
+            var jobId = (uint)Player.Job;
+
+            if (CosmicHelper.CrafterJobList.Contains(jobId))
+            {
+                IceLogging.Info("Executing command [/stylist crafter]");
+                Task_TurninMission.ExecuteCommand("/stylist crafter");
+            }
+            else if (CosmicHelper.GatheringJobList.Contains(jobId))
+            {
+                IceLogging.Info("Executing command [/stylist gatherer]");
+                Task_TurninMission.ExecuteCommand("/stylist gatherer");
+            }
+
+            return true;
         }
         private static bool? Mission_ChangeJob(uint missionId)
         {

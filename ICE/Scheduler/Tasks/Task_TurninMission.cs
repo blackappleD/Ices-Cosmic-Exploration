@@ -395,23 +395,6 @@ namespace ICE.Scheduler.Tasks
         {
             string tag = "Turnin Mission: Command Check";
 
-            if (Mission_Settings.Mode == ModeSelect.LevelMode && Utils.HasPlugin("Stylist"))
-            {
-                var jobId = (uint)Player.Job;
-
-                if (CosmicHelper.CrafterJobList.Contains(jobId))
-                {
-                    IceLogging.Info("Executing command [/stylist crafter]");
-                    ExecuteCommand("/stylist crafter");
-                }
-                else if (CosmicHelper.GatheringJobList.Contains(jobId))
-                {
-                    IceLogging.Info("Executing command [/stylist gatherer]");
-                    ExecuteCommand("/stylist gatherer");
-                }
-                P.TaskManager.EnqueueDelay(500);
-            }
-
             foreach (var task in C.PostMissionCommands)
             {
                 IceLogging.Info($"Queueing up the following command:\n" +
