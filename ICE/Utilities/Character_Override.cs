@@ -38,5 +38,6 @@ namespace ICE.Utilities
         // Relic
         public static bool Relic_SwapJob => Ov?.Relic_SwapJob ?? G.Relic_SwapJob;
         public static uint Relic_BattleJob => Ov?.Relic_BattleJob ?? G.Relic_BattleJob;
+        public static bool Relic_Stylist => Ov?.Relic_Stylist ?? G.Relic_Stylist;
     }
 }

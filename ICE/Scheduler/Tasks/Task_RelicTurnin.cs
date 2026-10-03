@@ -209,14 +209,11 @@ namespace ICE.Scheduler.Tasks
                 IceLogging.Info("No longer busy talking to researchingway, to we're done");
                 if (Char_Info.Relic_SwapJob)
                 {
-                    if (C.Relic_Stylist)
-                    {
-                        P.TaskManager.Enqueue(() => StylistCheck(), "Doing a stylist check", Utils.TaskConfig);
-                    }
-                    else
-                    {
-                        P.TaskManager.Enqueue(() => ReturnBackToJob(), "Returning back to the original job", Utils.TaskConfig);
-                    }
+                    P.TaskManager.Enqueue(() => ReturnBackToJob(), "Returning back to the original job", Utils.TaskConfig);
+
+                    // 交付后工具被收走，回到原职业后用 Gearsetter 重新穿戴推荐装备
+                    if (Char_Info.Relic_Stylist && P.Gearsetter.Installed)
+                        Task_Gearsetter.Enqueue();
                 }
                 return true;
             }
@@ -224,24 +221,6 @@ namespace ICE.Scheduler.Tasks
             return false;
 
         }
-        public static bool StylistCheck()
-        {
-            var jobId = TurninJob;
-
-            if (CosmicHelper.CrafterJobList.Contains(jobId))
-            {
-                Task_TurninMission.ExecuteCommand("/stylist crafter");
-            }
-            else if (CosmicHelper.GatheringJobList.Contains(jobId))
-            {
-                Task_TurninMission.ExecuteCommand("/stylist gatherer");
-            }
-            P.TaskManager.EnqueueDelay(1000);
-            P.TaskManager.Enqueue(() => ReturnBackToJob(), "Returning back to original job", Utils.TaskConfig);
-
-            return true;
-        }
-
         private static int postRelicCounter = 0;
 
         public static bool? ReturnBackToJob()

@@ -986,7 +986,7 @@ namespace ICE.Ui.MainUi.Settings
                 }
 
                 bool useStylist = C.Relic_Stylist;
-                if (ImGui.Checkbox(T("Use Stylist to re-equip tools"), ref useStylist))
+                if (ImGui.Checkbox(T("Use Gearsetter to re-equip recommended gear"), ref useStylist))
                 {
                     C.Relic_Stylist = useStylist;
                     C.Save();
@@ -1031,7 +1031,7 @@ namespace ICE.Ui.MainUi.Settings
                     current =>
                     {
                         bool v = current;
-                        if (ImGui.Checkbox(T("Use Stylist to re-equip tools"), ref v) && ov.Relic_Stylist.HasValue)
+                        if (ImGui.Checkbox(T("Use Gearsetter to re-equip recommended gear"), ref v) && ov.Relic_Stylist.HasValue)
                         {
                             ov.Relic_Stylist = v;
                             C.Save();
