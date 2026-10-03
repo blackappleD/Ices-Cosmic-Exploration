@@ -28,6 +28,11 @@ public partial class Config
     public Dictionary<uint, Vector3> CrafterLocations { get; set; } = new();
     public List<MissionCommand> PostMissionCommands { get; set; } = new();
 
+    // 练级模式领取任务前使用 Gearsetter 换装
+    public bool LevelingGearsetter { get; set; } = true;
+    public bool GearsetterOldToInventory { get; set; } = false;
+    public bool GearsetterOldWeaponsToInventory { get; set; } = false;
+
     public bool UseHubReturn { get; set; } = true;
     public bool UseAethernet { get; set; } = true;
     public float HubReturn_Distance { get; set; } = 75f;

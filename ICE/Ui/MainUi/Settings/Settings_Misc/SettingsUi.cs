@@ -36,6 +36,7 @@ public static partial class SettingsUi
         // Auto-Use
         AutoUse_RemoveStellar,
         AutoUse_StartOnMoon,
+        AutoUse_Gearsetter,
 
         // Post Mission Settings
         Post_GoldRemover,

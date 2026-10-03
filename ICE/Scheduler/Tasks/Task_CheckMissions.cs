@@ -970,7 +970,7 @@ namespace ICE.Scheduler.Tasks
                     new(() => Mission_ChangeJob(missionId), "Changing to correct job for mission")
                 );
 
-            if (Mission_Settings.Mode == ModeSelect.LevelMode && P.Gearsetter.Installed)
+            if (Mission_Settings.Mode == ModeSelect.LevelMode && C.LevelingGearsetter && P.Gearsetter.Installed)
                 Task_Gearsetter.Enqueue();
 
             P.TaskManager.Enqueue(() => GrabMission(missionId), "Grabbing mission to initate");

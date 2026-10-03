@@ -20,6 +20,16 @@ namespace ICE.Scheduler.Tasks
         private static int Index;
         private static int Pass;
         private static bool Skip;
+        // 换下来的武器/副手会进兵装库，记录下来等装备成功后再挪进背包
+        private static (InventoryType Container, uint ItemId, int AttemptsLeft)? PendingWeaponMove;
+
+        private static readonly InventoryType[] BagInventories =
+        [
+            InventoryType.Inventory1,
+            InventoryType.Inventory2,
+            InventoryType.Inventory3,
+            InventoryType.Inventory4,
+        ];
 
         public static void Enqueue()
         {
@@ -38,6 +48,7 @@ namespace ICE.Scheduler.Tasks
             Recommendations = null;
             Index = 0;
             Pass = 0;
+            PendingWeaponMove = null;
 
             var gearsets = RaptureGearsetModule.Instance();
             var index = gearsets->CurrentGearsetIndex;
@@ -60,6 +71,12 @@ namespace ICE.Scheduler.Tasks
 
             if (!EzThrottler.Throttle(Throttle, 100))
                 return false;
+
+            if (PendingWeaponMove != null)
+            {
+                MovePendingWeapon();
+                return false;
+            }
 
             var gearsets = RaptureGearsetModule.Instance();
 
@@ -113,11 +130,87 @@ namespace ICE.Scheduler.Tasks
                 return false;
             }
 
+            bool isWeapon = targetSlot is RaptureGearsetModule.GearsetItemIndex.MainHand or RaptureGearsetModule.GearsetItemIndex.OffHand;
+            var oldItemId = equipped->Items[(int)targetSlot].ItemId;
+
+            // 非武器栏位：先把旧装备挪进背包，再穿新装备，避免旧装备回到兵装库
+            if (C.GearsetterOldToInventory && !isWeapon && oldItemId != 0)
+            {
+                var (bag, bagSlot) = GetFirstEmptyBagSlot();
+                if (bagSlot < 0)
+                {
+                    IceLogging.Debug("Inventory is full, replaced item stays in armoury", Tag);
+                }
+                else
+                {
+                    IceLogging.Info($"Moving replaced item {oldItemId} from {targetSlot} to {bag} (slot {bagSlot})", Tag);
+                    inventory->MoveItemSlot(InventoryType.EquippedItems, (ushort)targetSlot, bag, (ushort)bagSlot, true);
+                    EzThrottler.Throttle(Throttle, 500, true);
+                    return false;
+                }
+            }
+
             IceLogging.Info($"Equipping item {itemId} to {targetSlot} from {sourceInventory} (slot {sourceSlot})", Tag);
             inventory->MoveItemSlot(sourceInventory.Value, sourceSlot.Value, InventoryType.EquippedItems, (ushort)targetSlot, true);
+
+            // 主手不能为空，无法提前挪走，换下来的武器/副手会进兵装库，之后再从兵装库挪进背包
+            if (C.GearsetterOldToInventory && C.GearsetterOldWeaponsToInventory && isWeapon && oldItemId != 0 && oldItemId != itemId)
+            {
+                var armory = targetSlot == RaptureGearsetModule.GearsetItemIndex.MainHand ? InventoryType.ArmoryMainHand : InventoryType.ArmoryOffHand;
+                PendingWeaponMove = (armory, oldItemId, 10);
+            }
             // 等服务器确认装备变化后再检查
             EzThrottler.Throttle(Throttle, 500, true);
             return false;
+        }
+
+        private static void MovePendingWeapon()
+        {
+            var (container, oldItemId, attemptsLeft) = PendingWeaponMove!.Value;
+            var cont = InventoryManager.Instance()->GetInventoryContainer(container);
+
+            for (int i = 0; i < cont->Size; i++)
+            {
+                if (cont->Items[i].ItemId != oldItemId)
+                    continue;
+
+                PendingWeaponMove = null;
+                var (bag, bagSlot) = GetFirstEmptyBagSlot();
+                if (bagSlot < 0)
+                {
+                    IceLogging.Debug("Inventory is full, replaced weapon stays in armoury", Tag);
+                }
+                else
+                {
+                    IceLogging.Info($"Moving replaced weapon {oldItemId} from {container} (slot {i}) to {bag} (slot {bagSlot})", Tag);
+                    InventoryManager.Instance()->MoveItemSlot(container, (ushort)i, bag, (ushort)bagSlot, true);
+                    EzThrottler.Throttle(Throttle, 500, true);
+                }
+                return;
+            }
+
+            // 装备结果可能要过几帧才可见，多试几次
+            PendingWeaponMove = --attemptsLeft > 0 ? (container, oldItemId, attemptsLeft) : null;
+            if (PendingWeaponMove == null)
+                IceLogging.Debug($"Replaced weapon {oldItemId} not found in {container}, giving up", Tag);
+        }
+
+        private static (InventoryType Inventory, short Slot) GetFirstEmptyBagSlot()
+        {
+            foreach (var type in BagInventories)
+            {
+                var cont = InventoryManager.Instance()->GetInventoryContainer(type);
+                if (cont == null)
+                    continue;
+
+                for (short i = 0; i < cont->Size; i++)
+                {
+                    if (cont->Items[i].ItemId == 0)
+                        return (type, i);
+                }
+            }
+
+            return (InventoryType.Inventory1, -1);
         }
 
         private static bool? SaveGearset()
@@ -126,6 +219,7 @@ namespace ICE.Scheduler.Tasks
                 RaptureGearsetModule.Instance()->UpdateGearset(RaptureGearsetModule.Instance()->CurrentGearsetIndex);
 
             Recommendations = null;
+            PendingWeaponMove = null;
             return true;
         }
     }

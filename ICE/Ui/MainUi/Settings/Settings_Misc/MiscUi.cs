@@ -60,6 +60,51 @@ public static partial class SettingsUi
         }
     };
 
+    private static readonly SettingEntry AutoUse_Gearsetter = new()
+    {
+        Label = T("Auto equip recommended gear with Gearsetter (Leveling Mode)"),
+        Category = AutoUseCategory,
+        Keywords = new[] { "Gearsetter", "Gear", "Equip", "Leveling", "Inventory", "Armoury", "Weapon" },
+        Draw = () =>
+        {
+            var useGearsetter = C.LevelingGearsetter;
+            if (ImGui.Checkbox(T("Auto equip recommended gear with Gearsetter (Leveling Mode)"), ref useGearsetter))
+            {
+                C.LevelingGearsetter = useGearsetter;
+                C.Save();
+            }
+
+            ImGui.SameLine();
+            ImGuiEx.IconWithTooltip(FontAwesomeIcon.QuestionCircle,
+                T("Before grabbing each mission in Leveling Mode, equips the gear recommended by Gearsetter for the current gearset.\n") +
+                T("Requires the Gearsetter plugin."));
+
+            using (ImRaii.Disabled(!useGearsetter))
+            {
+                ImGui.Indent();
+
+                var oldToInventory = C.GearsetterOldToInventory;
+                if (ImGui.Checkbox(T("Move replaced gear to inventory"), ref oldToInventory))
+                {
+                    C.GearsetterOldToInventory = oldToInventory;
+                    C.Save();
+                }
+
+                using (ImRaii.Disabled(!oldToInventory))
+                {
+                    var weaponsToInventory = C.GearsetterOldWeaponsToInventory;
+                    if (ImGui.Checkbox(T("Also move replaced main hand / off hand to inventory"), ref weaponsToInventory))
+                    {
+                        C.GearsetterOldWeaponsToInventory = weaponsToInventory;
+                        C.Save();
+                    }
+                }
+
+                ImGui.Unindent();
+            }
+        }
+    };
+
     #endregion
 
     #region Post Mission Settings
