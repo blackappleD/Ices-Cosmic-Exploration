@@ -1098,7 +1098,8 @@ namespace ICE.Scheduler.Tasks
 
                             if (PlayerHelper.GetItemCount(cordial.Key, out var amount, hq, !hq) && amount > 0)
                             {
-                                if (ActionManager.Instance()->GetActionStatus(ActionType.Item, 12669) == 0)
+                                // Check the cordial we're actually about to use, item action status fails when that item isn't in the inventory
+                                if (ActionManager.Instance()->GetActionStatus(ActionType.Item, cordial.Key) == 0)
                                 {
                                     if (!C.PreventOvercap || !WillOvercap(cordial.Value.GpGain))
                                     {
@@ -1119,7 +1120,7 @@ namespace ICE.Scheduler.Tasks
                                             {
                                                 var item = container->GetInventorySlot(i);
                                                 if (item == null) continue;
-                                                if (item->ItemId == baseId && (hq == false || item->Flags.HasFlag(InventoryItem.ItemFlags.HighQuality)))
+                                                if (item->ItemId == baseId && item->Flags.HasFlag(InventoryItem.ItemFlags.HighQuality) == hq)
                                                 {
                                                     IceLogging.Verbose($"We're using a cordial: ID: {cordial.Key} | Name: {cordial.Value.Name}", tag);
                                                     AgentInventoryContext.Instance()->UseItem(cordial.Key, invType, (uint)i, 0);
