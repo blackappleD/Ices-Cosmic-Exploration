@@ -31,8 +31,7 @@ public static partial class SettingsUi
                 C.Save();
             }
 
-            ImGui.SameLine();
-            ImGuiEx.IconWithTooltip(FontAwesomeIcon.InfoCircle,
+            ImGui_Ice.IconWithTooltip(FontAwesomeIcon.InfoCircle,
                 T("Automatically removes the Star Contributor visual effect (the glow you get for being a top contributor).\nThe buff restores itself when you re-enter the zone."));
         }
     };
@@ -51,8 +50,7 @@ public static partial class SettingsUi
                 C.Save();
             }
 
-            ImGui.SameLine();
-            ImGuiEx.IconWithTooltip(FontAwesomeIcon.QuestionCircle,
+            ImGui_Ice.IconWithTooltip(FontAwesomeIcon.QuestionCircle,
                 T("This will check to see if you're on a gathering/crafting class upon first entering the moon.\n") +
                 T("If you are, it will automatically start as if you had pressed the start button yourself\n") +
                 T("Really useful if you have a tool to auto-log you in/if you just want to enter the moon and go\n") +
@@ -74,8 +72,7 @@ public static partial class SettingsUi
                 C.Save();
             }
 
-            ImGui.SameLine();
-            ImGuiEx.IconWithTooltip(FontAwesomeIcon.QuestionCircle,
+            ImGui_Ice.IconWithTooltip(FontAwesomeIcon.QuestionCircle,
                 T("Before grabbing each mission in Leveling Mode, equips the gear recommended by Gearsetter for the current gearset.\n") +
                 T("Requires the Gearsetter plugin."));
 
