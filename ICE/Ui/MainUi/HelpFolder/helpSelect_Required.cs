@@ -38,8 +38,8 @@ ImGui.Text(T("For botanist/miner/fisher"));
 
             ImGui.Separator();
 ImGui.TextWrapped(T("This isn't required, but highly recommended for leveling up characters. It will auto equip gear from your armory/inventory, and swap it out when running Leveling Grind Mode"));
-            ImGuiEx.IconWithText(FontAwesomeIcon.Leaf, T("Stylist"));
-            HasPlugin("https://raw.githubusercontent.com/NightmareXIV/MyDalamudPlugins/main/pluginmaster.json", "Stylist");
+            ImGuiEx.IconWithText(FontAwesomeIcon.Leaf, T("Gearsetter"));
+            HasPlugin("https://puni.sh/api/repository/vera", "Gearsetter");
         }
 
         private static void DrawFishingPluginRequirement()

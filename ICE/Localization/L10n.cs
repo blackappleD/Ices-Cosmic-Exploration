@@ -986,6 +986,7 @@ internal static class L10n
         ["Fishing plugin check passed (current: AutoHook)."] = "钓鱼插件检查通过（当前：AutoHook）。",
         ["Fishing plugin check passed (current: MissFisher)."] = "钓鱼插件检查通过（当前：MissFisher）。",
         ["Stylist"] = "Stylist",
+        ["Gearsetter"] = "Gearsetter",
         ["{0} Repo is Installed"] = "{0} 仓库已安装",
         ["Install {0} Repo"] = "安装 {0} 仓库",
         ["{0} is installed"] = "{0} 已安装",

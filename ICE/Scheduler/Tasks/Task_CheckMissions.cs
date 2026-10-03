@@ -1,7 +1,6 @@
 ﻿using ECommons.GameHelpers;
 using FFXIVClientStructs.FFXIV.Client.Game.WKS;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
-using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using ICE.Sounds;
 using ICE.Utilities.Cosmic_Helper;
 using ICE.Utilities.GatheringHelper;
@@ -971,35 +970,10 @@ namespace ICE.Scheduler.Tasks
                     new(() => Mission_ChangeJob(missionId), "Changing to correct job for mission")
                 );
 
-            if (Mission_Settings.Mode == ModeSelect.LevelMode && P.Stylist.Installed)
-            {
-                P.TaskManager.Enqueue(() => Mission_StylistEquip(), "Equipping recommended gear with Stylist");
-                P.TaskManager.EnqueueDelay(250);
-                P.TaskManager.Enqueue(() => !P.Stylist.IsBusy(), "Waiting for Stylist to finish equipping", new(timeLimitMS: 20000, abortOnTimeout: false));
-            }
+            if (Mission_Settings.Mode == ModeSelect.LevelMode && P.Gearsetter.Installed)
+                Task_Gearsetter.Enqueue();
 
             P.TaskManager.Enqueue(() => GrabMission(missionId), "Grabbing mission to initate");
-        }
-        private static unsafe bool? Mission_StylistEquip()
-        {
-            string tag = "[Check Missions: Stylist]";
-
-            // 等待换职完成，否则 CurrentGearsetIndex 可能还是上一个职业的套装
-            if (Player.IsBusy)
-                return false;
-
-            var gearsets = RaptureGearsetModule.Instance();
-            var index = gearsets->CurrentGearsetIndex;
-            if (!gearsets->IsValidGearset(index) || (Job)gearsets->GetGearset(index)->ClassJob != Player.Job)
-            {
-                IceLogging.Warning($"Current gearset {index} does not belong to {Player.Job}, skipping Stylist", tag);
-                return true;
-            }
-
-            // shouldEquip = true：即使套装数据已是最优（没有变化）也强制重新穿戴
-            IceLogging.Info($"Updating and equipping gearset {index + 1} via Stylist IPC", tag);
-            P.Stylist.UpdateCurrentGearsetEx(null, true);
-            return true;
         }
         private static bool? Mission_ChangeJob(uint missionId)
         {

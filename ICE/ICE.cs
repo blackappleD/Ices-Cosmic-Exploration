@@ -49,7 +49,7 @@ public sealed partial class ICE : IDalamudPlugin
     internal IceCosmicExplorationIPC IceIpc;
     internal GlamourerIPC GlamourIpc;
     internal NotificationMasterIPC NotificationIPC;
-    internal StylistIPC Stylist;
+    internal GearsetterIPC Gearsetter;
 
     public ICE(IDalamudPluginInterface pi)
     {
@@ -73,7 +73,7 @@ public sealed partial class ICE : IDalamudPlugin
         IceIpc = new();
         GlamourIpc = new(Svc.PluginInterface);
         NotificationIPC = new();
-        Stylist = new();
+        Gearsetter = new();
 
         // all the windows
         windowSystem = new();
