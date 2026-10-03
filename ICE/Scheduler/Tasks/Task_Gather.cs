@@ -598,10 +598,12 @@ namespace ICE.Scheduler.Tasks
 
             bool missingDur = currentDur != maxDur;
 
-            if (Mission_Settings.Mode == ModeSelect.LevelMode)
+            // Only fall back to the built-in leveling profile when the mission is still on the default profile,
+            // so a profile the user picked for the mission is respected in leveling mode
+            if (Mission_Settings.Mode == ModeSelect.LevelMode && profileId == 0)
             {
                 if (EzThrottler.Throttle("Level grind message", 1000))
-                    IceLogging.Debug("Leveling mode enabled, setting it to gatherProfile");
+                    IceLogging.Debug("Leveling mode enabled w/ default profile, setting it to the leveling gatherProfile");
                 gatherProfile = LevelProfile;
             }
             else if (gatherProfile == null)
@@ -769,12 +771,12 @@ namespace ICE.Scheduler.Tasks
             var used = Mission_Settings.SkillUseAmount[actionName];
             bool properLvl = Player.Level >= actionInfo.RequiredLv;
 
+            var gatherBuff = GatherProfile(profileId).Buffs[actionName];
+
             if (actionName == "BonusIntegrityChance")
             {
-                return hasStatus && currentDur == 1;
+                return gatherBuff.Enabled && hasStatus && currentDur == 1;
             }
-
-            var gatherBuff = GatherProfile(profileId).Buffs[actionName];
 
             return actionName switch
             {

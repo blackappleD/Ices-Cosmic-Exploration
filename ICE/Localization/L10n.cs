@@ -944,6 +944,9 @@ internal static class L10n
             = "设置该技能触发前所需的最低节点耐久。\n主要用于可连续恢复耐久的任务。",
         ["Ageless Words / Solid Reason"] = "石工之理 / 农夫之智",
         ["Increase the Integrity by 1\n50% chance to grant Eureka Moment"] = "节点耐久 +1\n有 50% 概率触发灵光乍现",
+        ["Wise to the World [Eureka Moment]"] = "灵光乍现后的耐久恢复技能",
+        ["Increase the Integrity by 1 when Eureka Moment is active\nOnly used when the node has 1 durability left"]
+            = "灵光乍现状态下节点耐久 +1\n仅在节点剩余 1 点耐久时使用",
         ["Bountiful Yield II / Bountiful Harvest II"] = "高产II / 丰收II",
         ["Field Mastery | Sharp Vision III"] = "敏锐视野III / 环境探知III",
         ["Field Mastery | Sharp Vision II"] = "敏锐视野II / 环境探知II",

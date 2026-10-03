@@ -780,6 +780,32 @@ ImGui.TextWrapped(T("Short answer: It's built in now\n" +
 
                 #endregion
 
+                #region Bonus Integrity [Eureka Moment]
+
+                if (ImGui.CollapsingHeader(T("Wise to the World [Eureka Moment]")))
+                {
+                    string buffName = "BonusIntegrityChance";
+
+                    ImGui.PushID(buffName);
+
+                    bool currentlyEnabled = entry.GatherBuffs.Buffs[buffName].Enabled;
+                    string ActionInfo = T("Increase the Integrity by 1 when Eureka Moment is active\n" +
+                                        "Only used when the node has 1 durability left");
+
+                    ImGui.Text(T("Action Info:"));
+                    ImGuiEx.HelpMarker(ActionInfo);
+
+                    if (ImGui.Checkbox(T("Enable"), ref currentlyEnabled))
+                    {
+                        entry.GatherBuffs.Buffs[buffName].Enabled = currentlyEnabled;
+                        C.Save();
+                    }
+
+                    ImGui.PopID();
+                }
+
+                #endregion
+
                 #region Bountiful Yield II
 
                 if (ImGui.CollapsingHeader(T("Bountiful Yield II / Bountiful Harvest II")))
