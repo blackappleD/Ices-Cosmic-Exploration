@@ -889,8 +889,9 @@ internal static class L10n
         ["Red Mage"] = "赤魔法师",
         ["Pictomancer"] = "绘灵法师",
         ["None"] = "无",
-        ["Extract Spiritbond on Gather"] = "采集时提取精炼度",
-        ["Enabling this will make it to where pandora's cordial feature won't be auto-paused."] = "启用后，Pandora 的强心剂功能不会被自动暂停。",
+        ["Materia Settings"] = "魔晶石设置",
+        ["Auto Extract Materia"] = "自动精炼",
+        ["Extracts materia from gear at 100% spiritbond while on a gathering or crafting job."] = "当前为采集或能工巧匠职业时，自动对精炼度达到 100% 的装备进行魔晶石精制。",
         ["Auto Cordial"] = "自动使用强心剂",
         ["Will only work while using ICE and not manual mode\nWill also pause pandora cordial usage while on the moon"]
             = "仅在 ICE 自动运行且非手动模式时生效\n在月球上也会暂停 Pandora 的强心剂使用",

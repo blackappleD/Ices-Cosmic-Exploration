@@ -29,6 +29,8 @@ namespace ICE.Ui.MainUi.Settings
                     {
                         RepairSettings(null);
                         ImGui.Separator();
+                        MateriaSettings(null);
+                        ImGui.Separator();
                         ArtisanSettingsV2(null);
                         ImGui.Separator();
                         MountSelection(null);
@@ -55,6 +57,8 @@ namespace ICE.Ui.MainUi.Settings
                         {
                             var ov = C.CharacterOverrides[cid];
                             RepairSettings(ov);
+                            ImGui.Separator();
+                            MateriaSettings(ov);
                             ImGui.Separator();
                             ArtisanSettingsV2(ov);
                             ImGui.Separator();
@@ -261,6 +265,33 @@ namespace ICE.Ui.MainUi.Settings
 
             PlayerHelper.GetItemCount(Utils.DarkMatter_8Id, out var dmCount);
             ImGui.Text(T("Currently have: {0:N0} Grade 8 Dark Matter", dmCount));
+        }
+
+        // -------------------------------------------------------------------------
+        // Materia Settings
+        // -------------------------------------------------------------------------
+        private static void MateriaSettings(CharacterOverride? ov)
+        {
+            ImGuiEx.IconWithText(FontAwesomeIcon.Gem, T("Materia Settings"));
+            ImGui.Dummy(new Vector2(0, 5));
+
+            if (ov == null)
+            {
+                bool autoExtract = C.AutoExtractMateria;
+                if (ImGui.Checkbox(T("Auto Extract Materia"), ref autoExtract))
+                { C.AutoExtractMateria = autoExtract; C.Save(); }
+            }
+            else
+            {
+                OverrideField("AutoExtractMateria", C.AutoExtractMateria, ov.AutoExtractMateria,
+                    v => ov.AutoExtractMateria = v,
+                    current => {
+                        bool v = current;
+                        if (ImGui.Checkbox(T("Auto Extract Materia"), ref v) && ov.AutoExtractMateria.HasValue)
+                        { ov.AutoExtractMateria = v; C.Save(); }
+                    });
+            }
+            ImGuiEx.HelpMarker(T("Extracts materia from gear at 100% spiritbond while on a gathering or crafting job."));
         }
 
         // -------------------------------------------------------------------------

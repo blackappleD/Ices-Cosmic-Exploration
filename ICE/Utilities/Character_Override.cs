@@ -23,6 +23,9 @@ namespace ICE.Utilities
         public static bool Stop_DarkMatter => G.Stop_DarkMatter;
         public static int Minimum_DarkMatter => Ov?.Minimum_DarkMatter ?? G.Minimum_DarkMatter;
 
+        // Materia
+        public static bool AutoExtractMateria => Ov?.AutoExtractMateria ?? G.AutoExtractMateria;
+
         // Artisan
         public static Global_Artisan Artisan_GlobalStandard => Ov?.Artisan_GlobalStandard ?? G.Artisan_GlobalStandard;
         public static Global_Artisan Artisan_GlobalExpert => Ov?.Artisan_GlobalExpert ?? G.Artisan_GlobalExpert;

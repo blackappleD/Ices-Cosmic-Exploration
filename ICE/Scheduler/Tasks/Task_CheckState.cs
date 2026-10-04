@@ -527,9 +527,7 @@ namespace ICE.Scheduler.Tasks
             bool selfRepairCraft = Char_Info.SelfRepairCrafter && CosmicHelper.CrafterJobList.Contains((uint)Player.Job);
             bool selfRepairGathering = Char_Info.SelfRepairGather && CosmicHelper.GatheringJobList.Contains((uint)Player.Job);
 
-            bool spiritbonded = C.SelfSpiritbondGather 
-                && CosmicHelper.GatheringJobList.Contains((uint)Player.Job)
-                && Task_Spiritbond.IsSpiritbondReadyAny();
+            bool spiritbonded = Task_Spiritbond.ShouldAutoExtract();
 
             if (repairSelfGear || repairAllGear)
             {

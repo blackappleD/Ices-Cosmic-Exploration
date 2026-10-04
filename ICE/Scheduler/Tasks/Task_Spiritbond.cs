@@ -41,6 +41,19 @@ namespace ICE.Scheduler.Tasks
             return false;
         }
 
+        // Auto extract applies to both gathering (DoL) and crafting (DoH) jobs
+        public static bool ShouldAutoExtract()
+        {
+            if (!Char_Info.AutoExtractMateria)
+                return false;
+
+            var job = (uint)Player.Job;
+            if (!CosmicHelper.GatheringJobList.Contains(job) && !CosmicHelper.CrafterJobList.Contains(job))
+                return false;
+
+            return IsSpiritbondReadyAny();
+        }
+
         public static bool SpiritbondUnlocked()
         {
             return QuestManager.IsQuestComplete(638);
@@ -113,7 +126,7 @@ namespace ICE.Scheduler.Tasks
             if (!EzThrottler.Throttle("Extract", 250))
                 return false;
 
-            if (InventoryManager.Instance()->GetEmptySlotsInBag() < 1 || !IsSpiritbondReadyAny() || !C.SelfSpiritbondGather || !Player.Job.IsDol())
+            if (InventoryManager.Instance()->GetEmptySlotsInBag() < 1 || !ShouldAutoExtract())
             {
                 if (GenericHelpers.TryGetAddonByName("Materialize", out AtkUnitBase* materialize))
                 {

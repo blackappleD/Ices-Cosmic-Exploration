@@ -949,7 +949,7 @@ namespace ICE.Scheduler.Tasks
             P.TaskManager.Tasks.Clear();
 
             // Extract materia between missions if spiritbond is ready and next mission is not EX+
-            if (C.SelfSpiritbondGather && Task_Spiritbond.IsSpiritbondReadyAny())
+            if (Task_Spiritbond.ShouldAutoExtract())
             {
                 if (CosmicHelper.SheetMissionDict.TryGetValue(missionId, out var nextMission) && nextMission.Rank < 6)
                 {

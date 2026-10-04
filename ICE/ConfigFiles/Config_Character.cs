@@ -13,7 +13,7 @@ public partial class Config
         public bool? SelfRepairCrafter { get; set; } = null;
         public bool? RepairAtVendor { get; set; } = null;
         public int? RepairPercent { get; set; } = null;
-        public bool? Spiritbond_Remove { get; set; } = null;
+        public bool? AutoExtractMateria { get; set; } = null;
         public bool? RepairAllGear { get; set; } = null;
         public int? Minimum_DarkMatter { get; set; } = null;
 
