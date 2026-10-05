@@ -264,10 +264,10 @@ namespace ICE.Scheduler.Tasks
                             Mission_Settings.item_collectableId = collectable.ItemID;
                         }
 
-                        if (CheckDelay())
-                            return false;
-
-                        CollectableGather(collectable);
+                        if (!CheckDelay())
+                        {
+                            CollectableGather(collectable);
+                        }
                     }
                 }
                 else
