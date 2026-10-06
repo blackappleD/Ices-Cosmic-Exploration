@@ -948,6 +948,9 @@ namespace ICE.Scheduler.Tasks
         {
             P.TaskManager.Tasks.Clear();
 
+            // Check and process retainers before accepting mission
+            Task_AutoRetainer.Enqueue();
+
             // Extract materia between missions if spiritbond is ready and next mission is not EX+
             if (Task_Spiritbond.ShouldAutoExtract())
             {

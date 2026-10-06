@@ -26,6 +26,8 @@ public partial class Config
         public bool? Relic_SwapJob { get; set; } = null;
         public uint? Relic_BattleJob { get; set; } = null;
         public bool? Relic_Stylist { get; set; } = null;
+
+        public bool? AutoRetainer { get; set; } = null;
     }
 
     public Dictionary<ulong, CharacterOverride> CharacterOverrides { get; set; } = new();

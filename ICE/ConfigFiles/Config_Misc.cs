@@ -60,4 +60,7 @@ public partial class Config
     public bool Notification_Foreground { get; set; } = false;
     public bool Notification_Toast { get; set; } = false;
     public bool Notification_FlashTaskbar { get; set; } = false;
+
+    // Auto Retainer Settings
+    public bool AutoRetainer { get; set; } = false;
 }

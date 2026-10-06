@@ -31,6 +31,8 @@ namespace ICE.Ui.MainUi.Settings
                         ImGui.Separator();
                         MateriaSettings(null);
                         ImGui.Separator();
+                        RetainerSettings(null);
+                        ImGui.Separator();
                         ArtisanSettingsV2(null);
                         ImGui.Separator();
                         MountSelection(null);
@@ -59,6 +61,8 @@ namespace ICE.Ui.MainUi.Settings
                             RepairSettings(ov);
                             ImGui.Separator();
                             MateriaSettings(ov);
+                            ImGui.Separator();
+                            RetainerSettings(ov);
                             ImGui.Separator();
                             ArtisanSettingsV2(ov);
                             ImGui.Separator();
@@ -292,6 +296,34 @@ namespace ICE.Ui.MainUi.Settings
                     });
             }
             ImGuiEx.HelpMarker(T("Extracts materia from gear at 100% spiritbond while on a gathering or crafting job."));
+        }
+
+        // -------------------------------------------------------------------------
+        // Retainer Settings
+        // -------------------------------------------------------------------------
+        private static void RetainerSettings(CharacterOverride? ov)
+        {
+            ImGuiEx.IconWithText(FontAwesomeIcon.Users, T("Retainer Settings"));
+            ImGui.Dummy(new Vector2(0, 5));
+
+            if (ov == null)
+            {
+                bool autoRetainer = C.AutoRetainer;
+                if (ImGui.Checkbox(T("Auto Retainer"), ref autoRetainer))
+                { C.AutoRetainer = autoRetainer; C.Save(); }
+                ImGuiEx.HelpMarker(T("Automatically process retainer ventures before accepting missions. Requires AutoRetainer or AutoRetainCN plugin."));
+            }
+            else
+            {
+                OverrideField("AutoRetainer", C.AutoRetainer, ov.AutoRetainer,
+                    v => ov.AutoRetainer = v,
+                    current => {
+                        bool v = current;
+                        if (ImGui.Checkbox(T("Auto Retainer"), ref v) && ov.AutoRetainer.HasValue)
+                        { ov.AutoRetainer = v; C.Save(); }
+                    });
+                ImGuiEx.HelpMarker(T("Automatically process retainer ventures before accepting missions. Requires AutoRetainer or AutoRetainCN plugin."));
+            }
         }
 
         // -------------------------------------------------------------------------

@@ -39,7 +39,7 @@ public sealed partial class ICE : IDalamudPlugin
     // Taskmanager from Ecommons
     internal TaskManager TaskManager;
 
-    // Internal IPC's that I use for... well plugins. 
+    // Internal IPC's that I use for... well plugins.
     internal LifestreamIPC Lifestream;
     internal NavmeshIPC Navmesh;
     internal PandoraIPC Pandora;
@@ -50,6 +50,7 @@ public sealed partial class ICE : IDalamudPlugin
     internal GlamourerIPC GlamourIpc;
     internal NotificationMasterIPC NotificationIPC;
     internal GearsetterIPC Gearsetter;
+    internal AutoRetainerIPC AutoRetainer;
 
     public ICE(IDalamudPluginInterface pi)
     {
@@ -74,6 +75,7 @@ public sealed partial class ICE : IDalamudPlugin
         GlamourIpc = new(Svc.PluginInterface);
         NotificationIPC = new();
         Gearsetter = new();
+        AutoRetainer = new();
 
         // all the windows
         windowSystem = new();
