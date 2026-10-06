@@ -2,9 +2,9 @@
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
 
 	<PropertyGroup>
-		<Version>1.0.0.3011</Version>
-		<AssemblyVersion>1.0.0.3011</AssemblyVersion>
-		<FileVersion>1.0.0.3011</FileVersion>
+		<Version>1.0.0.3013</Version>
+		<AssemblyVersion>1.0.0.3013</AssemblyVersion>
+		<FileVersion>1.0.0.3013</FileVersion>
 		<AssemblyName>ICE-bld</AssemblyName>
 		<Description>Who said we couldn't explore the moon!.</Description>
 		<PackageProjectUrl>https://github.com/goatcorp/ICE</PackageProjectUrl>
