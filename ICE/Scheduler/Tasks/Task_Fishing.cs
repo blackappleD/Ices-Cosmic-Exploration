@@ -252,8 +252,12 @@ namespace ICE.Scheduler.Tasks
                     {
                         IceLogging.Verbose("We are telling fishing plugin to start...", handle);
                         StartFishingByAvailablePlugin(handle);
-                        StartedFishing++;
-                        IceLogging.Verbose($"等待钓鱼实际开始中（可能在等待 GP/增益）... 尝试次数: {StartedFishing}", handle);
+                    }
+
+                    if (EzThrottler.Throttle("Started Fishing Throttle", 500))
+                    {
+                        IceLogging.Verbose($"+1 等待钓鱼实际开始中（可能在等待 GP/增益）... {StartedFishing}", handle);
+                        Svc.Commands.ProcessCommand("/ahstart");
                     }
                 }
                 else
