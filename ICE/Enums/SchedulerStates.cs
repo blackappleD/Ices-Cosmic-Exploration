@@ -20,6 +20,7 @@ namespace ICE.Enums
         Spiritbond = 14,
         Shopping = 15,
         ArtifactSearch = 16,
+        Retainer = 17,
 
         Craft = 20,
         Gather = 21,

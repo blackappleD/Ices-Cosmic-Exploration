@@ -49,6 +49,12 @@ namespace ICE.Scheduler.Tasks
 
         public static void Enqueue()
         {
+            if (Task_AutoRetainer.ShouldRun())
+            {
+                SchedulerMain.State = IceState.Retainer;
+                return;
+            }
+
             P.TaskManager.EnqueueMulti
                 (
                     new(() => RefreshMissionLibrary(), "Refreshing the mission library"),
@@ -947,9 +953,6 @@ namespace ICE.Scheduler.Tasks
         private static void Insert_GrabMissionTask(uint missionId)
         {
             P.TaskManager.Tasks.Clear();
-
-            // Check and process retainers before accepting mission
-            Task_AutoRetainer.Enqueue();
 
             // Extract materia between missions if spiritbond is ready and next mission is not EX+
             if (Task_Spiritbond.ShouldAutoExtract())

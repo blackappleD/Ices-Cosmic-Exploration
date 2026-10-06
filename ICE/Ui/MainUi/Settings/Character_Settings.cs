@@ -311,7 +311,7 @@ namespace ICE.Ui.MainUi.Settings
                 bool autoRetainer = C.AutoRetainer;
                 if (ImGui.Checkbox(T("Auto Retainer"), ref autoRetainer))
                 { C.AutoRetainer = autoRetainer; C.Save(); }
-                ImGuiEx.HelpMarker(T("Automatically process retainer ventures before accepting missions. Requires AutoRetainer or AutoRetainCN plugin."));
+                ImGuiEx.HelpMarker(T("Before grabbing each mission, if any retainer venture is finished, uses Stellar Return, walks to the hub summoning bell and lets AutoRetainer process this character once, then continues ICE.\nRequires AutoRetainer (or AutoRetainer-CN). This character and its retainers must be enabled in AutoRetainer's Multi Mode, and \"Do not teleport or enter house for retainers when already next to bell\" should be enabled."));
             }
             else
             {
@@ -322,8 +322,10 @@ namespace ICE.Ui.MainUi.Settings
                         if (ImGui.Checkbox(T("Auto Retainer"), ref v) && ov.AutoRetainer.HasValue)
                         { ov.AutoRetainer = v; C.Save(); }
                     });
-                ImGuiEx.HelpMarker(T("Automatically process retainer ventures before accepting missions. Requires AutoRetainer or AutoRetainCN plugin."));
+                ImGuiEx.HelpMarker(T("Before grabbing each mission, if any retainer venture is finished, uses Stellar Return, walks to the hub summoning bell and lets AutoRetainer process this character once, then continues ICE.\nRequires AutoRetainer (or AutoRetainer-CN). This character and its retainers must be enabled in AutoRetainer's Multi Mode, and \"Do not teleport or enter house for retainers when already next to bell\" should be enabled."));
             }
+            if (!P.AutoRetainer.Installed)
+                ImGui.TextColored(EColor.RedBright, T("AutoRetainer is not installed."));
         }
 
         // -------------------------------------------------------------------------

@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using ICE.IPC;
 using static ICE.Localization.L10n;
 
 namespace ICE.Ui.MainUi.HelpFolder
@@ -40,6 +41,23 @@ ImGui.Text(T("For botanist/miner/fisher"));
 ImGui.TextWrapped(T("This isn't required, but highly recommended for leveling up characters. It will auto equip gear from your armory/inventory, and swap it out when running Leveling Grind Mode"));
             ImGuiEx.IconWithText(FontAwesomeIcon.Leaf, T("Gearsetter"));
             HasPlugin("https://puni.sh/api/repository/vera", "Gearsetter");
+
+            ImGui.Separator();
+            ImGui.TextWrapped(T("Optional. Required for Auto Retainer (Character Settings). Install either the global or the CN version."));
+            ImGuiEx.IconWithText(FontAwesomeIcon.Users, T("AutoRetainer"));
+            DrawAutoRetainerRequirement();
+        }
+
+        private static void DrawAutoRetainerRequirement()
+        {
+            // Both builds share the InternalName "AutoRetainer", so only the repo differs.
+            ImGui.TextDisabled(T("AutoRetainer (Global)"));
+            DrawRepo(AutoRetainerIPC.Repo, "AutoRetainer");
+            ImGui.TextDisabled(T("AutoRetainer-CN"));
+            DrawRepo(AutoRetainerIPC.RepoCN, "AutoRetainer-CN");
+
+            var repo = DalamudReflector.HasRepo(AutoRetainerIPC.RepoCN) ? AutoRetainerIPC.RepoCN : AutoRetainerIPC.Repo;
+            DrawPlugin(repo, AutoRetainerIPC.Name);
         }
 
         private static void DrawFishingPluginRequirement()
@@ -76,6 +94,12 @@ ImGui.TextWrapped(T("This isn't required, but highly recommended for leveling up
 
         public static void HasPlugin(string repo, string pluginName)
         {
+            DrawRepo(repo, pluginName);
+            DrawPlugin(repo, pluginName);
+        }
+
+        private static void DrawRepo(string repo, string pluginName)
+        {
             bool isInstalled = DalamudReflector.HasRepo($"{repo}");
             if (isInstalled)
             {
@@ -93,7 +117,10 @@ ImGui.TextWrapped(T("This isn't required, but highly recommended for leveling up
                     DalamudReflector.SaveDalamudConfig();
                 }
             }
+        }
 
+        private static void DrawPlugin(string repo, string pluginName)
+        {
             bool hasPlugin = Utils.HasPlugin($"{pluginName}");
 
             if (hasPlugin)
