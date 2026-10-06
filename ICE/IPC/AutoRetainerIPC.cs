@@ -19,16 +19,6 @@ namespace ICE.IPC
 
         [EzIPC] public Func<bool> IsBusy;
         [EzIPC] public Func<bool> AreAnyRetainersAvailableForCurrentChara;
-        [EzIPC] public Func<bool> GetMultiModeStatus;
         [EzIPC] public Action AbortAllTasks;
-        [EzIPC] public Action DisableAllFunctions;
-
-        /// <summary>
-        /// 只对当前角色执行一轮多角色模式（前往雇员铃 → 收取/派遣探险），完成后自动关闭多角色模式。
-        /// 参数为 AutoRetainer 的 MultiModeType?（Retainers=0, Submersibles=1, Everything=2），Dalamud IPC 会经 JSON 转换枚举。
-        /// </summary>
-        [EzIPC] public Action<int?> EnableSingleMultiMode;
-
-        public const int MultiMode_Retainers = 0;
     }
 }

@@ -49,8 +49,6 @@ internal static unsafe class PlayerHandlers
 
         if ((!PlayerHelper.IsInCosmicZone()) && SchedulerMain.State != IceState.Idle)
         {
-            if (SchedulerMain.State == IceState.Retainer)
-                global::ICE.Utilities.Cosmic_Helper.IceLogging.ChatInfo(global::ICE.Localization.L10n.T("AutoRetainer teleported away from the moon. Enable \"Do not teleport or enter house for retainers when already next to bell\" in AutoRetainer's Multi Mode settings."), "[I.C.E.]");
             DisablePlugin();
         }
 

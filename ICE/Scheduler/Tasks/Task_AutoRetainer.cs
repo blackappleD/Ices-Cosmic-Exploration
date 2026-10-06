@@ -1,7 +1,10 @@
+using Dalamud.Game.ClientState.Conditions;
+using Dalamud.Game.ClientState.Objects.Enums;
+using Dalamud.Game.ClientState.Objects.Types;
 using ECommons.GameHelpers;
 using ECommons.Throttlers;
 using FFXIVClientStructs.FFXIV.Client.Game;
-using ICE.IPC;
+using ICE.Scheduler.Handlers;
 using ICE.Utilities.Cosmic_Helper;
 using Lumina.Excel.Sheets;
 using System;
@@ -9,22 +12,33 @@ using System;
 namespace ICE.Scheduler.Tasks
 {
     /// <summary>
-    /// 接取任务前的自动雇员：宇宙返回 → 走到基地传唤铃 → 交给 AutoRetainer 跑一轮单角色多角色模式 → 交回 ICE。
+    /// 接取任务前的自动雇员：宇宙返回 → 走到基地传唤铃 → 打开雇员列表 → 让 AutoRetainer 以普通模式处理 → 关闭列表交回 ICE。
+    /// 不使用 AutoRetainer 的多角色模式，因此不要求在多角色模式中启用当前角色，只看 AutoRetainer 中勾选的雇员。
     /// </summary>
-    internal static class Task_AutoRetainer
+    internal static unsafe class Task_AutoRetainer
     {
         private const string CooldownKey = "AutoRetainer_Cooldown";
-        // 一轮结束（无论成功与否）后的冷却，避免 AutoRetainer 未处理（如角色未在多角色模式中启用）时反复触发
+        // 一轮结束（无论成功与否）后的冷却，避免 AutoRetainer 无法处理时反复触发
         private const int CooldownMs = 5 * 60 * 1000;
-        private const long StartTimeoutMs = 15_000;
-        private const long RunTimeoutMs = 15 * 60 * 1000;
+        private const long OpenBellTimeoutMs = 20_000;
+        private const long RunTimeoutMs = 5 * 60 * 1000;
+        // AutoRetainer 处理完后需持续空闲这么久才认为结束（雇员之间切换时会短暂空闲）
+        private const long IdleConfirmMs = 3_000;
+        // 列表已打开但 AutoRetainer 一直不动（如雇员未在 AutoRetainer 中勾选）时放弃等待
+        private const long StuckTimeoutMs = 30_000;
+        private const long CloseTimeoutMs = 20_000;
         private const float BellInteractDistance = 2.5f;
 
-        private static long _startedAt;
-        private static bool _multiModeSeen;
+        private static long _stepStartedAt;
+        private static long _idleSince;
+        private static long _atListSince;
+        private static long _closeStartedAt;
 
         private static string? _bellName;
         private static string BellName => _bellName ??= Svc.Data.GetExcelSheet<EObjName>().GetRow(2000401).Singular.ToString();
+
+        private static bool RetainerListReady
+            => GenericHelpers.TryGetAddonByName<FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase>("RetainerList", out var addon) && GenericHelpers.IsAddonReady(addon);
 
         public static bool Enabled
             => Player.Available && C.Resolve((ulong)Player.CID, ov => ov.AutoRetainer, c => c.AutoRetainer);
@@ -52,21 +66,25 @@ namespace ICE.Scheduler.Tasks
             if (!P.AutoRetainer.AreAnyRetainersAvailableForCurrentChara())
                 return false;
 
-            IceLogging.Info("Retainer ventures are ready, handing over to AutoRetainer before grabbing a mission", tag);
+            IceLogging.Info("Retainer ventures are ready, going to the summoning bell before grabbing a mission", tag);
             return true;
         }
 
         public static void Enqueue()
         {
-            _startedAt = 0;
-            _multiModeSeen = false;
+            _stepStartedAt = 0;
+            _idleSince = 0;
+            _atListSince = 0;
+            _closeStartedAt = 0;
 
             P.TaskManager.EnqueueMulti
                 (
                     new(ReturnToHub, "AutoRetainer: Stellar Return to hub"),
                     new(MoveToBell, "AutoRetainer: Moving to summoning bell"),
-                    new(StartAutoRetainer, "AutoRetainer: Starting single multi mode"),
+                    new(OpenBell, "AutoRetainer: Opening the summoning bell"),
+                    new(StartAutoRetainer, "AutoRetainer: Enabling AutoRetainer"),
                     new(WaitForAutoRetainer, "AutoRetainer: Waiting for AutoRetainer to finish"),
+                    new(CloseBell, "AutoRetainer: Closing the retainer list"),
                     new(Finish, "AutoRetainer: Handing control back to ICE")
                 );
         }
@@ -102,8 +120,7 @@ namespace ICE.Scheduler.Tasks
 
             if (!FindBell(out var bell))
             {
-                if (EzThrottler.Throttle("AutoRetainer_NoBell", 5000))
-                    IceLogging.Error($"Could not find a summoning bell ({BellName}) near the hub, skipping auto retainer", tag);
+                IceLogging.Error($"Could not find a summoning bell ({BellName}) near the hub, skipping auto retainer", tag);
                 return Abort();
             }
 
@@ -118,54 +135,123 @@ namespace ICE.Scheduler.Tasks
             return false;
         }
 
+        private static bool? OpenBell()
+        {
+            string tag = "[AutoRetainer: Open Bell]";
+
+            if (RetainerListReady)
+            {
+                _stepStartedAt = 0;
+                return true;
+            }
+
+            if (_stepStartedAt == 0)
+                _stepStartedAt = Environment.TickCount64;
+            else if (Environment.TickCount64 - _stepStartedAt > OpenBellTimeoutMs)
+            {
+                IceLogging.Error("Could not open the retainer list from the summoning bell, skipping auto retainer", tag);
+                return Abort();
+            }
+
+            if (!FindBell(out var bell) || Player.IsAnimationLocked || GenericHelpers.IsOccupied())
+                return false;
+
+            if (EzThrottler.Throttle("AutoRetainer_InteractBell", 3000))
+            {
+                IceLogging.Info("Interacting with the summoning bell", tag);
+                Svc.Targets.Target = bell;
+                Utils.InteractWithObject(bell);
+            }
+
+            return false;
+        }
+
         private static bool? StartAutoRetainer()
         {
             string tag = "[AutoRetainer: Start]";
 
-            if (_startedAt == 0)
-            {
-                IceLogging.Info("Enabling AutoRetainer single multi mode for the current character", tag);
-                P.AutoRetainer.EnableSingleMultiMode(AutoRetainerIPC.MultiMode_Retainers);
-                _startedAt = Environment.TickCount64;
+            // 打开铃后 AutoRetainer 可能按自身「打开传唤铃时」设置启用/禁用自己，统一在列表打开后再启用一次
+            if (!EzThrottler.Throttle("AutoRetainer_Enable", 1000))
                 return false;
-            }
 
-            if (P.AutoRetainer.GetMultiModeStatus() || P.AutoRetainer.IsBusy())
-            {
-                _multiModeSeen = true;
-                return true;
-            }
-
-            if (Environment.TickCount64 - _startedAt > StartTimeoutMs)
-            {
-                IceLogging.Warning("AutoRetainer did not start multi mode, continuing with missions", tag);
-                return true;
-            }
-
-            return false;
+            IceLogging.Info("Enabling AutoRetainer to process retainers", tag);
+            Svc.Commands.ProcessCommand("/autoretainer e");
+            _stepStartedAt = Environment.TickCount64;
+            _idleSince = 0;
+            _atListSince = 0;
+            return true;
         }
 
         private static bool? WaitForAutoRetainer()
         {
             string tag = "[AutoRetainer: Wait]";
 
-            if (!_multiModeSeen)
-                return true;
+            bool atList = RetainerListReady && !P.AutoRetainer.IsBusy();
+            bool idle = atList && !P.AutoRetainer.AreAnyRetainersAvailableForCurrentChara();
 
-            bool running = P.AutoRetainer.GetMultiModeStatus() || P.AutoRetainer.IsBusy();
-            if (!running && Player.Interactable && PlayerHelper.IsScreenReady() && !GenericHelpers.IsOccupied())
-                return true;
-
-            if (Environment.TickCount64 - _startedAt > RunTimeoutMs)
+            if (atList)
             {
-                IceLogging.Error("AutoRetainer has been running for too long, aborting it and continuing with missions", tag);
+                if (_atListSince == 0)
+                    _atListSince = Environment.TickCount64;
+                else if (Environment.TickCount64 - _atListSince > StuckTimeoutMs)
+                {
+                    IceLogging.Warning("AutoRetainer is not processing the retainers, continuing with missions", tag);
+                    return true;
+                }
+            }
+            else
+            {
+                _atListSince = 0;
+            }
+
+            if (idle)
+            {
+                if (_idleSince == 0)
+                    _idleSince = Environment.TickCount64;
+                else if (Environment.TickCount64 - _idleSince > IdleConfirmMs)
+                {
+                    IceLogging.Info("AutoRetainer finished processing retainers", tag);
+                    return true;
+                }
+            }
+            else
+            {
+                _idleSince = 0;
+            }
+
+            if (Environment.TickCount64 - _stepStartedAt > RunTimeoutMs)
+            {
+                IceLogging.Error("AutoRetainer did not finish in time, stopping it and continuing with missions", tag);
                 P.AutoRetainer.AbortAllTasks();
-                P.AutoRetainer.DisableAllFunctions();
                 return true;
             }
 
             if (EzThrottler.Throttle("AutoRetainer_WaitLog", 10_000))
                 IceLogging.Verbose("AutoRetainer is still processing retainers...", tag);
+
+            return false;
+        }
+
+        private static bool? CloseBell()
+        {
+            if (_closeStartedAt == 0)
+                _closeStartedAt = Environment.TickCount64;
+
+            if (!RetainerListReady && !Svc.Condition[ConditionFlag.OccupiedSummoningBell])
+            {
+                Svc.Commands.ProcessCommand("/autoretainer d");
+                return true;
+            }
+
+            if (Environment.TickCount64 - _closeStartedAt > CloseTimeoutMs)
+            {
+                IceLogging.Warning("Could not close the retainer list, continuing anyway", "[AutoRetainer: Close]");
+                Svc.Commands.ProcessCommand("/autoretainer d");
+                return true;
+            }
+
+            if (RetainerListReady && EzThrottler.Throttle("AutoRetainer_CloseList", 1000))
+                GenericHandlers.FireCallback("RetainerList", true, -1);
 
             return false;
         }
@@ -177,7 +263,7 @@ namespace ICE.Scheduler.Tasks
             EzThrottler.Throttle(CooldownKey, CooldownMs, true);
 
             if (P.AutoRetainer.AreAnyRetainersAvailableForCurrentChara())
-                IceLogging.Warning("AutoRetainer finished but retainers are still waiting. Make sure this character and its retainers are enabled in AutoRetainer's multi mode settings. Retrying in 5 minutes.", tag);
+                IceLogging.Warning("AutoRetainer finished but retainers are still waiting. Make sure the retainers are enabled in AutoRetainer. Retrying in 5 minutes.", tag);
             else
                 IceLogging.Info("Retainers processed, handing control back to ICE", tag);
 
@@ -193,13 +279,13 @@ namespace ICE.Scheduler.Tasks
             return true;
         }
 
-        private static bool FindBell(out Dalamud.Game.ClientState.Objects.Types.IGameObject bell)
+        private static bool FindBell(out IGameObject bell)
         {
             bell = null!;
             float best = float.MaxValue;
             foreach (var obj in Svc.Objects)
             {
-                if (obj.ObjectKind != Dalamud.Game.ClientState.Objects.Enums.ObjectKind.EventObj || !obj.IsTargetable)
+                if (obj.ObjectKind != ObjectKind.EventObj || !obj.IsTargetable)
                     continue;
                 if (!obj.Name.ToString().Equals(BellName, StringComparison.OrdinalIgnoreCase))
                     continue;
