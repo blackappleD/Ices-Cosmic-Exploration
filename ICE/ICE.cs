@@ -51,6 +51,7 @@ public sealed partial class ICE : IDalamudPlugin
     internal NotificationMasterIPC NotificationIPC;
     internal GearsetterIPC Gearsetter;
     internal AutoRetainerIPC AutoRetainer;
+    internal GlamourLogIPC GlamourLog;
 
     public ICE(IDalamudPluginInterface pi)
     {
@@ -76,6 +77,7 @@ public sealed partial class ICE : IDalamudPlugin
         NotificationIPC = new();
         Gearsetter = new();
         AutoRetainer = new();
+        GlamourLog = new();
 
         // all the windows
         windowSystem = new();
@@ -160,9 +162,9 @@ public sealed partial class ICE : IDalamudPlugin
         }
         else if (!Player.Available)
         {
-            if (SchedulerMain.State != IceState.Idle)
+            if (SchedulerMain.State != IceState.Idle && !SchedulerMain.OffMoonAllowed)
                 PlayerHandlers.DisablePlugin();
-            if (PlayerHandlers.PlayerFirstCosmicZone)
+            if (PlayerHandlers.PlayerFirstCosmicZone && !SchedulerMain.OffMoonAllowed)
                 PlayerHandlers.PlayerFirstCosmicZone = false;
         }
 
@@ -174,7 +176,7 @@ public sealed partial class ICE : IDalamudPlugin
         }
         else
         {
-            if (SchedulerMain.State != IceState.Idle)
+            if (SchedulerMain.State != IceState.Idle && !SchedulerMain.OffMoonAllowed)
                 SchedulerMain.DisablePlugin();
         }
 

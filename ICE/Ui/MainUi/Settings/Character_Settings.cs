@@ -33,6 +33,10 @@ namespace ICE.Ui.MainUi.Settings
                         ImGui.Separator();
                         RetainerSettings(null);
                         ImGui.Separator();
+                        GrandCompanySettings(null);
+                        ImGui.Separator();
+                        GlamourSettings(null);
+                        ImGui.Separator();
                         ArtisanSettingsV2(null);
                         ImGui.Separator();
                         MountSelection(null);
@@ -63,6 +67,10 @@ namespace ICE.Ui.MainUi.Settings
                             MateriaSettings(ov);
                             ImGui.Separator();
                             RetainerSettings(ov);
+                            ImGui.Separator();
+                            GrandCompanySettings(ov);
+                            ImGui.Separator();
+                            GlamourSettings(ov);
                             ImGui.Separator();
                             ArtisanSettingsV2(ov);
                             ImGui.Separator();
@@ -326,6 +334,111 @@ namespace ICE.Ui.MainUi.Settings
             }
             if (!P.AutoRetainer.Installed)
                 ImGui.TextColored(EColor.RedBright, T("AutoRetainer is not installed."));
+        }
+
+        // -------------------------------------------------------------------------
+        // Grand Company Turn-in Settings (leaves the moon, see Task_OffMoonErrands)
+        // -------------------------------------------------------------------------
+        private static void GrandCompanySettings(CharacterOverride? ov)
+        {
+            ImGuiEx.IconWithText(FontAwesomeIcon.Flag, T("Grand Company Turn-in"));
+            ImGui.Dummy(new Vector2(0, 5));
+
+            BoolSetting(ov, "AutoGCTurnin", T("GC Turn-in"),
+                C.AutoGCTurnin, v => C.AutoGCTurnin = v,
+                ov?.AutoGCTurnin, v => ov!.AutoGCTurnin = v);
+            PoweredBy("AutoRetainer", P.AutoRetainer.Installed);
+            ImGuiEx.HelpMarker(T("Before grabbing a mission, when free inventory slots drop to the value below, leaves the moon, lets AutoRetainer hand in Expert Delivery items at your Grand Company, then returns to the moon you came from.\nRequires AutoRetainer and Grand Company rank 6 or higher. Which items are handed in follows AutoRetainer's own GC delivery settings."));
+
+            ImGui.Indent();
+            if (ov == null)
+            {
+                int slots = C.GCTurnin_SlotsLeft;
+                if (SlotsInput(ref slots))
+                { C.GCTurnin_SlotsLeft = slots; C.SaveDebounced(); }
+            }
+            else
+            {
+                OverrideField("GCTurnin_SlotsLeft", C.GCTurnin_SlotsLeft, ov.GCTurnin_SlotsLeft,
+                    v => ov.GCTurnin_SlotsLeft = v,
+                    current => {
+                        int v = current;
+                        if (SlotsInput(ref v) && ov.GCTurnin_SlotsLeft.HasValue)
+                        { ov.GCTurnin_SlotsLeft = v; C.SaveDebounced(); }
+                    });
+            }
+            ImGuiEx.HelpMarker(T("Triggers when free inventory slots are at or below this value. If a turn-in frees no space, ICE waits until the inventory gets fuller before trying again."));
+
+            BoolSetting(ov, "GCTurnin_UseTicket", T("Use GC Aetheryte Ticket"),
+                C.GCTurnin_UseTicket, v => C.GCTurnin_UseTicket = v,
+                ov?.GCTurnin_UseTicket, v => ov!.GCTurnin_UseTicket = v);
+            ImGuiEx.HelpMarker(T("Uses the Grand Company aetheryte ticket when you have one. Otherwise teleports to the city aetheryte (Limsa Lominsa also needs Lifestream for the aethernet)."));
+            ImGui.Unindent();
+        }
+
+        private static bool SlotsInput(ref int slots)
+        {
+            ImGui.TextUnformatted(T("Inventory Slots Left @"));
+            ImGui.SameLine();
+            ImGui.SetNextItemWidth(120);
+            if (!ImGui.InputInt("##GCTurninSlotsLeft", ref slots, 1, 5))
+                return false;
+            slots = Math.Clamp(slots, 0, 140);
+            return true;
+        }
+
+        // -------------------------------------------------------------------------
+        // Glamour Storage Settings (leaves the moon, see Task_OffMoonErrands)
+        // -------------------------------------------------------------------------
+        private static void GlamourSettings(CharacterOverride? ov)
+        {
+            ImGuiEx.IconWithText(FontAwesomeIcon.Tshirt, T("Glamour Storage"));
+            ImGui.Dummy(new Vector2(0, 5));
+
+            BoolSetting(ov, "AutoGlamourDresser", T("Glamour Dresser"),
+                C.AutoGlamourDresser, v => C.AutoGlamourDresser = v,
+                ov?.AutoGlamourDresser, v => ov!.AutoGlamourDresser = v);
+            PoweredBy("Glamour Log", P.GlamourLog.Installed);
+            ImGuiEx.HelpMarker(T("Before grabbing a mission, if your inventory has outfit pieces that are not stored yet, goes to the inn room of your Grand Company city, lets Glamour Log store them into the glamour dresser, then returns to the moon you came from.\nStoring into the glamour dresser uses glamour prisms."));
+
+            BoolSetting(ov, "AutoArmoire", T("Armoire"),
+                C.AutoArmoire, v => C.AutoArmoire = v,
+                ov?.AutoArmoire, v => ov!.AutoArmoire = v);
+            PoweredBy("Glamour Log", P.GlamourLog.Installed);
+            ImGuiEx.HelpMarker(T("Before grabbing a mission, if your inventory has items that can be stored in the armoire, goes to the inn room of your Grand Company city, lets Glamour Log store them into the armoire, then returns to the moon you came from."));
+        }
+
+        private static void BoolSetting(CharacterOverride? ov, string id, string label, bool globalVal, Action<bool> setGlobal, bool? overrideVal, Action<bool?> setOverride)
+        {
+            if (ov == null)
+            {
+                bool v = globalVal;
+                if (ImGui.Checkbox(label, ref v))
+                { setGlobal(v); C.Save(); }
+                return;
+            }
+
+            OverrideField(id, globalVal, overrideVal, setOverride,
+                current => {
+                    bool v = current;
+                    if (ImGui.Checkbox(label, ref v) && overrideVal.HasValue)
+                    { setOverride(v); C.Save(); }
+                });
+        }
+
+        private static void PoweredBy(string pluginName, bool installed)
+        {
+            ImGui.SameLine();
+            if (installed)
+            {
+                ImGui.TextDisabled("| powered by");
+                ImGui.SameLine(0, 4);
+                ImGui.TextColored(new Vector4(0.25f, 0.8f, 1f, 1f), pluginName);
+            }
+            else
+            {
+                ImGui.TextColored(EColor.RedBright, T("| requires {0}", pluginName));
+            }
         }
 
         // -------------------------------------------------------------------------

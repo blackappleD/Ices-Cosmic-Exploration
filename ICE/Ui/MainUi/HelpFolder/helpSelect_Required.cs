@@ -46,6 +46,28 @@ ImGui.TextWrapped(T("This isn't required, but highly recommended for leveling up
             ImGui.TextWrapped(T("Optional. Required for Auto Retainer (Character Settings). Install either the global or the CN version."));
             ImGuiEx.IconWithText(FontAwesomeIcon.Users, T("AutoRetainer"));
             DrawAutoRetainerRequirement();
+
+            ImGui.Separator();
+            ImGui.TextWrapped(T("Optional. Required for Glamour Dresser / Armoire (Character Settings). Install either the global or the CN version."));
+            ImGuiEx.IconWithText(FontAwesomeIcon.Tshirt, T("Glamour Log"));
+            DrawGlamourLogRequirement();
+
+            ImGui.Separator();
+            ImGui.TextWrapped(T("Optional. Used by GC Turn-in in Limsa Lominsa when no Grand Company aetheryte ticket is used (aethernet to the Upper Decks)."));
+            ImGuiEx.IconWithText(FontAwesomeIcon.Route, T("Lifestream"));
+            HasPlugin(LifestreamIPC.Repo, LifestreamIPC.Name);
+        }
+
+        private static void DrawGlamourLogRequirement()
+        {
+            // Both builds share the InternalName "GlamourLog", so only the repo differs.
+            ImGui.TextDisabled(T("Glamour Log (Global)"));
+            DrawRepo(GlamourLogIPC.Repo, "GlamourLog");
+            ImGui.TextDisabled(T("Glamour Log (CN)"));
+            DrawRepo(GlamourLogIPC.RepoCN, "GlamourLog-CN");
+
+            var repo = DalamudReflector.HasRepo(GlamourLogIPC.RepoCN) ? GlamourLogIPC.RepoCN : GlamourLogIPC.Repo;
+            DrawPlugin(repo, GlamourLogIPC.Name);
         }
 
         private static void DrawAutoRetainerRequirement()

@@ -55,6 +55,12 @@ namespace ICE.Scheduler.Tasks
                 return;
             }
 
+            if (Task_OffMoonErrands.ShouldRun())
+            {
+                SchedulerMain.State = IceState.OffMoonErrands;
+                return;
+            }
+
             P.TaskManager.EnqueueMulti
                 (
                     new(() => RefreshMissionLibrary(), "Refreshing the mission library"),

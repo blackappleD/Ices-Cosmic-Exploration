@@ -28,6 +28,13 @@ public partial class Config
         public bool? Relic_Stylist { get; set; } = null;
 
         public bool? AutoRetainer { get; set; } = null;
+
+        public bool? AutoGCTurnin { get; set; } = null;
+        public int? GCTurnin_SlotsLeft { get; set; } = null;
+        public bool? GCTurnin_UseTicket { get; set; } = null;
+
+        public bool? AutoGlamourDresser { get; set; } = null;
+        public bool? AutoArmoire { get; set; } = null;
     }
 
     public Dictionary<ulong, CharacterOverride> CharacterOverrides { get; set; } = new();

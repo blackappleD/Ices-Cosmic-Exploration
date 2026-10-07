@@ -63,4 +63,13 @@ public partial class Config
 
     // Auto Retainer Settings
     public bool AutoRetainer { get; set; } = false;
+
+    // Grand Company Turn-in Settings (AutoRetainer)
+    public bool AutoGCTurnin { get; set; } = false;
+    public int GCTurnin_SlotsLeft { get; set; } = 10;
+    public bool GCTurnin_UseTicket { get; set; } = false;
+
+    // Glamour Dresser / Armoire Settings (Glamour Log)
+    public bool AutoGlamourDresser { get; set; } = false;
+    public bool AutoArmoire { get; set; } = false;
 }

@@ -35,6 +35,10 @@ namespace ICE.Scheduler
         internal static bool DebugOOMSub = false;
 
         internal static IceState State = Idle;
+
+        // 离开星球办事（军票上缴 / 幻化收纳）期间，不因离开宇宙区域或加载画面而停止插件
+        // 队列被中止（异常 / 手动停止）或已登出时不再豁免，避免状态卡住
+        internal static bool OffMoonAllowed => State == OffMoonErrands && P.TaskManager.IsBusy && Svc.ClientState.IsLoggedIn;
         internal static MissionAttributes MissionState = MissionAttributes.None;
 
         internal static void Tick()
@@ -61,6 +65,7 @@ namespace ICE.Scheduler
                     case ManualMode: Task_Manual.Enqueue(); break;
                     case ArtifactSearch: Task_ArtifactSearch.Enqueue_DroneCheck(); break;
                     case Retainer: Task_AutoRetainer.Enqueue(); break;
+                    case OffMoonErrands: Task_OffMoonErrands.Enqueue(); break;
                     default: DisablePlugin(); break;
                 }
             }

@@ -21,6 +21,7 @@ namespace ICE.Enums
         Shopping = 15,
         ArtifactSearch = 16,
         Retainer = 17,
+        OffMoonErrands = 18,
 
         Craft = 20,
         Gather = 21,

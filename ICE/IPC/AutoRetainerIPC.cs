@@ -20,5 +20,8 @@ namespace ICE.IPC
         [EzIPC] public Func<bool> IsBusy;
         [EzIPC] public Func<bool> AreAnyRetainersAvailableForCurrentChara;
         [EzIPC] public Action AbortAllTasks;
+
+        // 军票上缴：注册在 "AutoRetainer.GC.*" 下（不是 PluginState），需要人已站在军队补给处
+        [EzIPC("AutoRetainer.GC.EnqueueInitiation", false)] public Action EnqueueGCInitiation;
     }
 }
