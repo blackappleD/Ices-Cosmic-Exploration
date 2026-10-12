@@ -14,17 +14,26 @@ namespace ICE.Utilities
 
         private static CharacterOverride? Ov => C.CharacterOverrides.GetValueOrDefault(CID);
 
-        // Repair
-        public static bool SelfRepairGather => Ov?.SelfRepairGather ?? G.SelfRepairGather;
-        public static bool SelfRepairCrafter => Ov?.SelfRepairCrafter ?? G.SelfRepairCrafter;
-        public static bool RepairAtVendor => Ov?.RepairAtVendor ?? G.RepairAtVendor;
-        public static int RepairPercent => Ov?.RepairPercent ?? G.RepairPercent;
-        public static bool RepairAllGear => Ov?.RepairAllGear ?? G.RepairAllGear;
-        public static bool Stop_DarkMatter => G.Stop_DarkMatter;
-        public static int Minimum_DarkMatter => Ov?.Minimum_DarkMatter ?? G.Minimum_DarkMatter;
+        // Character actions (repair / materia / retainer / GC turn-in / glamour storage)
+        public static List<CharacterAction> Actions => Ov?.Actions ?? G.CharacterActions ?? [];
+
+        /// <summary>当前角色列表中第一个已启用的该类动作；没有或未启用时为 null。</summary>
+        public static T? Action<T>() where T : CharacterAction
+            => Actions.OfType<T>().FirstOrDefault(a => a.Enabled);
+
+        // Repair — 列表中没有已启用的「修理装备」时不修理
+        private static RepairAction? Repair => Action<RepairAction>();
+        public static bool RepairEnabled => Repair != null;
+        public static bool SelfRepairGather => Repair?.SelfRepairGather ?? false;
+        public static bool SelfRepairCrafter => Repair?.SelfRepairCrafter ?? false;
+        public static bool RepairAtVendor => Repair?.RepairAtVendor ?? false;
+        public static int RepairPercent => Repair?.RepairPercent ?? 0;
+        public static bool RepairAllGear => Repair?.RepairAllGear ?? false;
+        public static bool Stop_DarkMatter => Repair?.StopDarkMatter ?? false;
+        public static int Minimum_DarkMatter => Repair?.MinimumDarkMatter ?? 0;
 
         // Materia
-        public static bool AutoExtractMateria => Ov?.AutoExtractMateria ?? G.AutoExtractMateria;
+        public static bool AutoExtractMateria => Action<ExtractMateriaAction>() != null;
 
         // Artisan
         public static Global_Artisan Artisan_GlobalStandard => Ov?.Artisan_GlobalStandard ?? G.Artisan_GlobalStandard;

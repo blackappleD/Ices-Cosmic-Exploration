@@ -61,6 +61,7 @@ public partial class Config
     public bool Notification_Toast { get; set; } = false;
     public bool Notification_FlashTaskbar { get; set; } = false;
 
+    // Legacy: 以下设置已迁移到 CharacterActions，只用于迁移
     // Auto Retainer Settings
     public bool AutoRetainer { get; set; } = false;
 

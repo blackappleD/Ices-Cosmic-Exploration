@@ -8,9 +8,11 @@ using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
+using ICE.ConfigFiles;
 using ICE.Utilities.Cosmic_Helper;
 using Lumina.Excel.Sheets;
 using System.Collections.Generic;
+using ECommons.Automation.NeoTaskManager;
 using static ECommons.UIHelpers.AddonMasterImplementations.AddonMaster;
 using CabinetSheet = Lumina.Excel.Sheets.Cabinet;
 using GrandCompany = ECommons.ExcelServices.GrandCompany;
@@ -19,7 +21,8 @@ namespace ICE.Scheduler.Tasks
 {
     /// <summary>
     /// 接取任务前需要离开星球办的事：存入时装衣柜 / 幻化衣柜（Glamour Log）、军票上缴（AutoRetainer）。
-    /// 流程：去本国主城 → 旅馆房间存衣柜 → 军队补给处上缴 → 传送到最佳威兔洞 → 以太之光选择出发时的星球 → 交回 ICE。
+    /// 一趟办完所有需要处理的事，顺序与角色动作列表一致：
+    /// 旅馆（选定城市）→ 存衣柜，军队补给处 → 上缴；最后传送到最佳威兔洞 → 以太之光选择出发时的星球 → 交回 ICE。
     /// 任一步失败都会直接跳到返回星球，避免把角色留在城里。
     /// </summary>
     internal static unsafe class Task_OffMoonErrands
@@ -69,6 +72,8 @@ namespace ICE.Scheduler.Tasks
         // 军票上缴后剩余格数：之后要比它更少才再次触发
         private static int _gcFreeSlotsAfterRun = -1;
         private static int _gcFreeSlotsBeforeRun = -1;
+        // 接近目标时已发起过的寻路次数（目标在柜台后等走不到的位置时，走到尽头就直接尝试交互）
+        private static int _approachPaths;
         // 上缴后空间没有增加（没有可交物品、AR 未开启该角色的军票上缴等），暂停到剩余格数回到阈值以上
         private static bool _gcNoProgress;
         // 本次运行中存不进去的物品（如 Glamour Log 跳过的套装中物品、棱镜不足），避免反复出行
@@ -78,12 +83,12 @@ namespace ICE.Scheduler.Tasks
         private static HashSet<uint> CabinetItemIds
             => _cabinetItemIds ??= Svc.Data.GetExcelSheet<CabinetSheet>().Select(c => c.Item.RowId).Where(id => id != 0).ToHashSet();
 
-        private static ulong Cid => (ulong)Player.CID;
-        private static bool ArmoireEnabled => Player.Available && C.Resolve(Cid, ov => ov.AutoArmoire, c => c.AutoArmoire);
-        private static bool DresserEnabled => Player.Available && C.Resolve(Cid, ov => ov.AutoGlamourDresser, c => c.AutoGlamourDresser);
-        private static bool GcEnabled => Player.Available && C.Resolve(Cid, ov => ov.AutoGCTurnin, c => c.AutoGCTurnin);
-        private static int GcSlotsLeft => C.Resolve(Cid, ov => ov.GCTurnin_SlotsLeft, c => c.GCTurnin_SlotsLeft);
-        private static bool GcUseTicket => C.Resolve(Cid, ov => ov.GCTurnin_UseTicket, c => c.GCTurnin_UseTicket);
+        private static ArmoireAction? ArmoireConfig => Player.Available ? Char_Info.Action<ArmoireAction>() : null;
+        private static GlamourDresserAction? DresserConfig => Player.Available ? Char_Info.Action<GlamourDresserAction>() : null;
+        private static GCTurninAction? GcConfig => Player.Available ? Char_Info.Action<GCTurninAction>() : null;
+        private static bool GcUseTicket => GcConfig?.UseTicket ?? false;
+
+        private static int FreeSlots => (int)InventoryManager.Instance()->GetEmptySlotsInBag();
 
         private static uint Territory => Svc.ClientState.TerritoryType;
         private static GrandCompany Gc => (GrandCompany)PlayerState.Instance()->GrandCompany;
@@ -100,6 +105,13 @@ namespace ICE.Scheduler.Tasks
         // -------------------------------------------------------------------------
         // Trigger
         // -------------------------------------------------------------------------
+
+        /// <summary>在角色动作列表中第一个已启用的出星球动作的位置，用于和自动雇员排先后。</summary>
+        public static int ListIndex()
+        {
+            int index = Char_Info.Actions.FindIndex(a => a.Enabled && a is GCTurninAction or GlamourStorageAction);
+            return index < 0 ? int.MaxValue : index;
+        }
 
         /// <summary>
         /// 在接取任务前调用：没有进行中的任务、人在星球上，且至少有一项需要处理。
@@ -125,14 +137,16 @@ namespace ICE.Scheduler.Tasks
 
         private static bool NeedsArmoire()
         {
-            if (!ArmoireEnabled || !GlamourLogReady("AutoArmoire"))
+            var config = ArmoireConfig;
+            if (config == null || !GlamourLogReady("AutoArmoire") || FreeSlots > config.SlotsLeft)
                 return false;
-            return ArmoireCandidates().Any() && CanReachGcCity();
+            return ArmoireCandidates().Any() && CanReachCity(InnCity(config.Inn));
         }
 
         private static bool NeedsDresser()
         {
-            if (!DresserEnabled || !GlamourLogReady("AutoGlamourDresser"))
+            var config = DresserConfig;
+            if (config == null || !GlamourLogReady("AutoGlamourDresser") || FreeSlots > config.SlotsLeft)
                 return false;
             if (!QuestManager.IsQuestComplete(DresserUnlockQuest))
             {
@@ -140,12 +154,13 @@ namespace ICE.Scheduler.Tasks
                     IceLogging.Warning("Auto Glamour Dresser is enabled but the glamour dresser is not unlocked on this character", "[Off-Moon Errands: Check]");
                 return false;
             }
-            return DresserCandidates().Any() && CanReachGcCity();
+            return DresserCandidates().Any() && CanReachCity(InnCity(config.Inn));
         }
 
         private static bool NeedsGcTurnin()
         {
-            if (!GcEnabled)
+            var config = GcConfig;
+            if (config == null)
                 return false;
             if (!P.AutoRetainer.Installed)
             {
@@ -160,8 +175,8 @@ namespace ICE.Scheduler.Tasks
                 return false;
             }
 
-            int free = (int)InventoryManager.Instance()->GetEmptySlotsInBag();
-            if (free > GcSlotsLeft)
+            int free = FreeSlots;
+            if (free > config.SlotsLeft)
             {
                 _gcFreeSlotsAfterRun = -1;
                 _gcNoProgress = false;
@@ -172,17 +187,17 @@ namespace ICE.Scheduler.Tasks
             if (_gcFreeSlotsAfterRun >= 0 && free >= _gcFreeSlotsAfterRun)
                 return false;
 
-            return CanReachGcCity();
+            return CanReachCity(Gc);
         }
 
         /// <summary>
         /// 利姆萨不用传送券时需要 Lifestream 走以太网，没有就不出发，免得白跑一趟。
         /// </summary>
-        private static bool CanReachGcCity()
+        private static bool CanReachCity(GrandCompany city)
         {
-            if (Gc != GrandCompany.Maelstrom || P.Lifestream.Installed)
+            if (city != GrandCompany.Maelstrom || P.Lifestream.Installed)
                 return true;
-            if (GcUseTicket && InventoryManager.Instance()->GetInventoryItemCount(GcTicketItemId) > 0)
+            if (CanUseTicket(city))
                 return true;
 
             if (EzThrottler.Throttle("Errands_NoLifestream", 10 * 60 * 1000))
@@ -241,7 +256,7 @@ namespace ICE.Scheduler.Tasks
             _doArmoire = NeedsArmoire();
             _doDresser = NeedsDresser();
             _doGc = NeedsGcTurnin();
-            _gcFreeSlotsBeforeRun = (int)InventoryManager.Instance()->GetEmptySlotsInBag();
+            _gcFreeSlotsBeforeRun = FreeSlots;
             _returning = false;
             _aborted = false;
             ResetStep();
@@ -255,17 +270,41 @@ namespace ICE.Scheduler.Tasks
             if (P.Navmesh.Installed && P.Navmesh.IsRunning())
                 P.Navmesh.Stop();
 
-            P.TaskManager.EnqueueMulti
-                (
-                    new(Timed(TravelToGcCity, TravelTimeoutMs, "Travel to the Grand Company city"), "Errands: Travel to the Grand Company city"),
-                    new(Timed(EnterInn, InnTimeoutMs, "Enter the inn room"), "Errands: Entering the inn room"),
-                    new(Timed(StoreArmoire, StoreTimeoutMs, "Store items in the armoire"), "Errands: Storing items in the armoire"),
-                    new(Timed(StoreDresser, StoreTimeoutMs, "Store items in the glamour dresser"), "Errands: Storing items in the glamour dresser"),
-                    new(Timed(LeaveInnForGc, InnTimeoutMs, "Leave the inn room"), "Errands: Leaving the inn room"),
-                    new(Timed(MoveToGcSupply, TravelTimeoutMs, "Move to the Grand Company supply officer"), "Errands: Moving to the GC supply officer"),
-                    new(Timed(RunGcTurnin, GcTimeoutMs + GcStartTimeoutMs, "GC turn-in"), "Errands: AutoRetainer GC turn-in")
-                );
+            // 按角色动作列表的顺序安排；同类动作只处理第一个已启用的
+            var steps = new List<TaskManagerTask>();
+            bool gc = _doGc, armoire = _doArmoire, dresser = _doDresser;
+            foreach (var action in Char_Info.Actions.Where(a => a.Enabled))
+            {
+                if (action is GCTurninAction && gc)
+                {
+                    gc = false;
+                    steps.Add(new(Timed(LeaveInnForGc, InnTimeoutMs, "Leave the inn room"), "Errands: Leaving the inn room"));
+                    steps.Add(new(Timed(() => TravelToCity(Gc, innCounts: false), TravelTimeoutMs, "Travel to the Grand Company city"), "Errands: Travel to the Grand Company city"));
+                    steps.Add(new(Timed(MoveToGcSupply, TravelTimeoutMs, "Move to the Grand Company supply officer"), "Errands: Moving to the GC supply officer"));
+                    steps.Add(new(Timed(RunGcTurnin, GcTimeoutMs + GcStartTimeoutMs, "GC turn-in"), "Errands: AutoRetainer GC turn-in"));
+                }
+                else if (action is ArmoireAction armoireAction && armoire)
+                {
+                    armoire = false;
+                    AddInnSteps(steps, InnCity(armoireAction.Inn));
+                    steps.Add(new(Timed(StoreArmoire, StoreTimeoutMs, "Store items in the armoire"), "Errands: Storing items in the armoire"));
+                }
+                else if (action is GlamourDresserAction dresserAction && dresser)
+                {
+                    dresser = false;
+                    AddInnSteps(steps, InnCity(dresserAction.Inn));
+                    steps.Add(new(Timed(StoreDresser, StoreTimeoutMs, "Store items in the glamour dresser"), "Errands: Storing items in the glamour dresser"));
+                }
+            }
+
+            P.TaskManager.EnqueueMulti(steps.ToArray());
             EnqueueReturn();
+        }
+
+        private static void AddInnSteps(List<TaskManagerTask> steps, GrandCompany city)
+        {
+            steps.Add(new(Timed(() => TravelToCity(city), TravelTimeoutMs, "Travel to the inn's city"), "Errands: Travel to the inn's city"));
+            steps.Add(new(Timed(() => EnterInn(city), InnTimeoutMs, "Enter the inn room"), "Errands: Entering the inn room"));
         }
 
         private static void EnqueueReturn()
@@ -290,7 +329,7 @@ namespace ICE.Scheduler.Tasks
 
             if (_doGc)
             {
-                _gcFreeSlotsAfterRun = (int)InventoryManager.Instance()->GetEmptySlotsInBag();
+                _gcFreeSlotsAfterRun = FreeSlots;
                 _gcNoProgress = _gcFreeSlotsAfterRun <= _gcFreeSlotsBeforeRun;
                 if (_gcNoProgress)
                     IceLogging.Warning($"GC turn-in freed no inventory space ({_gcFreeSlotsAfterRun} free). Paused until free slots go above the threshold again. Check that GC delivery is enabled for this character in AutoRetainer.", tag);
@@ -347,6 +386,7 @@ namespace ICE.Scheduler.Tasks
             _idleSince = 0;
             _started = false;
             _closeStartedAt = 0;
+            _approachPaths = 0;
         }
 
         private static bool? Fail(string reason)
@@ -435,26 +475,40 @@ namespace ICE.Scheduler.Tasks
         // Grand Company city / inn
         // -------------------------------------------------------------------------
 
-        private static uint GcTerritory => Gc switch
+        // 城市用所在大国防联军表示：Maelstrom = 利姆萨·罗敏萨，TwinAdder = 格里达尼亚，ImmortalFlames = 乌尔达哈
+        private static GrandCompany InnCity(InnLocation inn) => inn switch
+        {
+            InnLocation.Limsa => GrandCompany.Maelstrom,
+            InnLocation.Gridania => GrandCompany.TwinAdder,
+            InnLocation.Uldah => GrandCompany.ImmortalFlames,
+            _ => Gc,
+        };
+
+        // 军队补给处 / 旅馆老板所在的区域（利姆萨为上层甲板）
+        private static uint CityTerritory(GrandCompany city) => city switch
         {
             GrandCompany.Maelstrom => 128u,
             GrandCompany.TwinAdder => 132u,
             _ => 130u,
         };
 
-        private static uint GcAetheryte => Gc switch
+        private static uint CityAetheryte(GrandCompany city) => city switch
         {
             GrandCompany.Maelstrom => 8u,
             GrandCompany.TwinAdder => 2u,
             _ => 9u,
         };
 
-        private static uint GcTicketItemId => Gc switch
+        private static uint TicketItemId(GrandCompany city) => city switch
         {
             GrandCompany.Maelstrom => 21069u,
             GrandCompany.TwinAdder => 21070u,
             _ => 21071u,
         };
+
+        // 传送券只能传到自己所属的军队总部
+        private static bool CanUseTicket(GrandCompany city)
+            => city == Gc && GcUseTicket && InventoryManager.Instance()->GetInventoryItemCount(TicketItemId(city)) > 0;
 
         private static Vector3 GcSupplyLocation => Gc switch
         {
@@ -463,56 +517,63 @@ namespace ICE.Scheduler.Tasks
             _ => new(-142.83f, 4.10f, -106.31f),
         };
 
-        private static uint InnTerritory => Gc switch
+        private static uint InnTerritory(GrandCompany city) => city switch
         {
             GrandCompany.Maelstrom => 177u,
             GrandCompany.TwinAdder => 179u,
             _ => 178u,
         };
 
-        private static uint InnExitDoorDataId => Gc switch
+        private static uint InnExitDoorDataId(GrandCompany city) => city switch
         {
             GrandCompany.Maelstrom => 2001010u,
             GrandCompany.TwinAdder => 2000087u,
             _ => 2001011u,
         };
 
-        private static Vector3 InnkeeperLocation => Gc switch
+        // 旅馆老板本身的坐标（在柜台后，导航只能走到柜台前）
+        private static Vector3 InnkeeperLocation(GrandCompany city) => city switch
         {
             GrandCompany.Maelstrom => new(15.43f, 40.00f, 12.47f),
-            GrandCompany.TwinAdder => new(25.66f, -8.00f, 99.74f),
+            GrandCompany.TwinAdder => new(23.70f, -8.07f, 100.08f),
             _ => new(28.86f, 7.00f, -80.13f),
         };
 
-        private static uint InnkeeperDataId => Gc switch
+        private static uint InnkeeperDataId(GrandCompany city) => city switch
         {
             GrandCompany.Maelstrom => 1000974u,
             GrandCompany.TwinAdder => 1000102u,
             _ => 1001976u,
         };
 
-        private static bool? TravelToGcCity()
+        // 与 NPC / 物体交互的距离
+        private const float InnkeeperRange = 6f;
+        private const float EObjRange = 3f;
+        private const float AetheryteRange = 8f;
+
+        /// <summary>到达该城市；innCounts 为 true 时已在该城市的旅馆房间里也算到达。</summary>
+        private static bool? TravelToCity(GrandCompany city, bool innCounts = true)
         {
             string tag = "[Off-Moon Errands: Travel]";
 
-            if (Territory == GcTerritory)
+            if (Territory == CityTerritory(city) || (innCounts && Territory == InnTerritory(city)))
                 return !InTransit;
 
             if (InTransit || GenericHelpers.IsOccupied() || Player.IsAnimationLocked)
                 return false;
 
-            if (GcUseTicket && InventoryManager.Instance()->GetInventoryItemCount(GcTicketItemId) > 0)
+            if (CanUseTicket(city))
             {
                 if (EzThrottler.Throttle("Errands_Teleport", 8000))
                 {
                     IceLogging.Info("Using the Grand Company aetheryte ticket", tag);
-                    AgentInventoryContext.Instance()->UseItem(GcTicketItemId);
+                    AgentInventoryContext.Instance()->UseItem(TicketItemId(city));
                 }
                 return false;
             }
 
-            // 利姆萨：以太之光在下层甲板，补给处在上层甲板
-            if (Gc == GrandCompany.Maelstrom && Territory == Svc.Data.GetExcelSheet<Aetheryte>().GetRow(GcAetheryte).Territory.RowId)
+            // 利姆萨：以太之光在下层甲板，补给处和旅馆在上层甲板
+            if (city == GrandCompany.Maelstrom && Territory == Svc.Data.GetExcelSheet<Aetheryte>().GetRow(CityAetheryte(city)).Territory.RowId)
             {
                 if (!P.Lifestream.Installed)
                     return Fail("Lifestream is required to use the Limsa Lominsa aethernet (or enable the Grand Company aetheryte ticket)");
@@ -526,26 +587,23 @@ namespace ICE.Scheduler.Tasks
                 return false;
             }
 
-            Teleport(GcAetheryte, tag);
+            Teleport(CityAetheryte(city), tag);
             return false;
         }
 
-        private static bool? EnterInn()
+        private static bool? EnterInn(GrandCompany city)
         {
             string tag = "[Off-Moon Errands: Inn]";
 
-            if (!_doArmoire && !_doDresser)
-                return true;
-
-            if (InInnRoom)
+            if (Territory == InnTerritory(city))
                 return !InTransit && Player.Interactable;
 
             if (InTransit)
                 return false;
 
-            if (Territory != GcTerritory)
+            if (Territory != CityTerritory(city))
             {
-                TravelToGcCity();
+                TravelToCity(city);
                 return false;
             }
 
@@ -568,24 +626,24 @@ namespace ICE.Scheduler.Tasks
                 return false;
             }
 
-            if (!Utils.TryGetObjectByDataId(InnkeeperDataId, out var innkeeper) || innkeeper == null || Player.DistanceTo(innkeeper.Position) > 6f)
-            {
-                MoveNear(InnkeeperLocation, 5f);
+            Utils.TryGetObjectByDataId(InnkeeperDataId(city), out var innkeeper);
+            var target = innkeeper?.Position ?? InnkeeperLocation(city);
+            if (!Approach(target, InnkeeperRange) || innkeeper == null)
                 return false;
-            }
 
-            if (MoveNear(innkeeper.Position, 4f) && !GenericHelpers.IsOccupied() && EzThrottler.Throttle("Errands_InnInteract", 3000))
+            if (!GenericHelpers.IsOccupied() && EzThrottler.Throttle("Errands_InnInteract", 3000))
             {
-                IceLogging.Info("Talking to the innkeeper", tag);
+                IceLogging.Info($"Talking to the innkeeper ({Player.DistanceTo(innkeeper.Position):F1}y away)", tag);
                 Svc.Targets.Target = innkeeper;
                 Utils.InteractWithObject(innkeeper);
             }
             return false;
         }
 
+        /// <summary>在本国主城旅馆里时走门出去；在别的旅馆里交给 TravelToCity 直接传送。</summary>
         private static bool? LeaveInnForGc()
         {
-            if (!_doGc || !InInnRoom)
+            if (!InInnRoom || Territory != InnTerritory(Gc))
                 return true;
 
             if (InTransit)
@@ -598,14 +656,11 @@ namespace ICE.Scheduler.Tasks
                 return false;
             }
 
-            if (!Utils.TryGetObjectByDataId(InnExitDoorDataId, out var door) || door == null)
-            {
-                // 不是本国旅馆（或找不到门），直接传送过去
-                TravelToGcCity();
-                return false;
-            }
+            // 找不到门就交给 TravelToCity 传送
+            if (!Utils.TryGetObjectByDataId(InnExitDoorDataId(Gc), out var door) || door == null)
+                return true;
 
-            if (MoveNear(door.Position, 2.5f) && !GenericHelpers.IsOccupied() && EzThrottler.Throttle("Errands_DoorInteract", 3000))
+            if (Approach(door.Position, EObjRange) && !GenericHelpers.IsOccupied() && EzThrottler.Throttle("Errands_DoorInteract", 3000))
             {
                 IceLogging.Info("Leaving the inn room", "[Off-Moon Errands: Inn]");
                 Svc.Targets.Target = door;
@@ -629,18 +684,12 @@ namespace ICE.Scheduler.Tasks
 
         private static bool? StoreArmoire()
         {
-            if (!_doArmoire)
-                return true;
-
             return StoreWithGlamourLog("Armoire", ArmoireEventId, () => CabinetReady,
                 ["Cabinet", "SelectString", "SelectYesno"]);
         }
 
         private static bool? StoreDresser()
         {
-            if (!_doDresser)
-                return true;
-
             return StoreWithGlamourLog("Glamour Dresser", DresserEventId, () => DresserReady,
                 ["MiragePrismPrismBoxCrystallize", "MiragePrismPrismBox", "MiragePrismMiragePlate", "SelectString", "SelectYesno"]);
         }
@@ -706,7 +755,7 @@ namespace ICE.Scheduler.Tasks
             if (target == null)
                 return Fail($"Could not find the {name} in the inn room");
 
-            if (MoveNear(target.Position, 2.5f) && !GenericHelpers.IsOccupied() && EzThrottler.Throttle("Errands_GlamourInteract", 3000))
+            if (Approach(target.Position, EObjRange) && !GenericHelpers.IsOccupied() && EzThrottler.Throttle("Errands_GlamourInteract", 3000))
             {
                 IceLogging.Info($"Opening the {name}", tag);
                 Svc.Targets.Target = target;
@@ -756,27 +805,21 @@ namespace ICE.Scheduler.Tasks
 
         private static bool? MoveToGcSupply()
         {
-            if (!_doGc)
-                return true;
-
-            if (Territory != GcTerritory)
+            if (Territory != CityTerritory(Gc))
             {
-                TravelToGcCity();
+                TravelToCity(Gc, innCounts: false);
                 return false;
             }
 
             if (InTransit)
                 return false;
 
-            return MoveNear(GcSupplyLocation, 4f);
+            return Approach(GcSupplyLocation, 4f);
         }
 
         private static bool? RunGcTurnin()
         {
             string tag = "[Off-Moon Errands: GC Turn-in]";
-
-            if (!_doGc)
-                return true;
 
             if (_closeStartedAt != 0)
                 return CloseAddons(["GrandCompanySupplyReward", "SelectYesno", "SelectString", "GrandCompanySupplyList"]);
@@ -909,7 +952,7 @@ namespace ICE.Scheduler.Tasks
             if (aetheryte == null)
                 return false;
 
-            if (MoveNear(aetheryte.Position, 7f) && !GenericHelpers.IsOccupied() && EzThrottler.Throttle("Errands_AetheryteInteract", 3000))
+            if (Approach(aetheryte.Position, AetheryteRange) && !GenericHelpers.IsOccupied() && EzThrottler.Throttle("Errands_AetheryteInteract", 3000))
             {
                 IceLogging.Info("Interacting with the Bestway Burrow aetheryte", tag);
                 Svc.Targets.Target = aetheryte;
@@ -964,23 +1007,36 @@ namespace ICE.Scheduler.Tasks
             Telepo.Instance()->Teleport(aetheryteId, 0);
         }
 
-        private static bool MoveNear(Vector3 position, float distance)
+        /// <summary>
+        /// 走到目标附近（range 以内）。目标在柜台后、墙边等导航到不了的地方时，
+        /// 导航走到尽头后只要离得不太远也返回 true，让调用方直接尝试交互。
+        /// </summary>
+        private static bool Approach(Vector3 position, float range)
         {
-            if (Player.DistanceTo(position) <= distance)
+            float distance = Player.DistanceTo(position);
+            bool navBusy = P.Navmesh.Installed && (P.Navmesh.PathfindInProgress() || P.Navmesh.IsRunning());
+
+            if (distance <= range)
             {
                 if (P.Navmesh.Installed && P.Navmesh.IsRunning())
                     P.Navmesh.Stop();
                 return !Player.IsMoving;
             }
 
-            if (!P.Navmesh.Installed || !P.Navmesh.IsReady() || P.Navmesh.PathfindInProgress() || P.Navmesh.IsRunning())
+            if (navBusy)
                 return false;
 
-            if (InTransit || GenericHelpers.IsOccupied())
+            if (_approachPaths > 0 && distance <= range + 3f && !Player.IsMoving)
+                return true;
+
+            if (!P.Navmesh.Installed || !P.Navmesh.IsReady() || InTransit || GenericHelpers.IsOccupied())
                 return false;
 
             if (EzThrottler.Throttle("Errands_Pathfind", 2000))
-                P.Navmesh.PathfindAndMoveTo(position, false);
+            {
+                P.Navmesh.PathfindAndMoveCloseTo(position, false, Math.Max(range - 1f, 1f));
+                _approachPaths++;
+            }
 
             return false;
         }

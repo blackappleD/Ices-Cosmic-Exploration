@@ -5,6 +5,7 @@ using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using Lumina.Excel.Sheets;
 using Pictomancy;
 using System.Collections.Generic;
+using ICE.ConfigFiles;
 using static ICE.ConfigFiles.Config;
 using static ICE.Localization.L10n;
 
@@ -27,15 +28,7 @@ namespace ICE.Ui.MainUi.Settings
                 {
                     if (ImGui.BeginChild("Global Character Settings"))
                     {
-                        RepairSettings(null);
-                        ImGui.Separator();
-                        MateriaSettings(null);
-                        ImGui.Separator();
-                        RetainerSettings(null);
-                        ImGui.Separator();
-                        GrandCompanySettings(null);
-                        ImGui.Separator();
-                        GlamourSettings(null);
+                        ActionSettings(null);
                         ImGui.Separator();
                         ArtisanSettingsV2(null);
                         ImGui.Separator();
@@ -62,15 +55,7 @@ namespace ICE.Ui.MainUi.Settings
                         if (ImGui.BeginChild("Character Specific"))
                         {
                             var ov = C.CharacterOverrides[cid];
-                            RepairSettings(ov);
-                            ImGui.Separator();
-                            MateriaSettings(ov);
-                            ImGui.Separator();
-                            RetainerSettings(ov);
-                            ImGui.Separator();
-                            GrandCompanySettings(ov);
-                            ImGui.Separator();
-                            GlamourSettings(ov);
+                            ActionSettings(ov);
                             ImGui.Separator();
                             ArtisanSettingsV2(ov);
                             ImGui.Separator();
@@ -162,283 +147,35 @@ namespace ICE.Ui.MainUi.Settings
         }
 
         // -------------------------------------------------------------------------
-        // Repair Settings
+        // Character actions (repair / materia / retainer / GC turn-in / glamour storage)
         // -------------------------------------------------------------------------
-        private static void RepairSettings(CharacterOverride? ov)
+        private static void ActionSettings(CharacterOverride? ov)
         {
-            ImGuiEx.IconWithText(FontAwesomeIcon.Hammer, T("Repair Settings"));
+            ImGuiEx.IconWithText(FontAwesomeIcon.ListUl, T("Character Actions"));
+            ImGuiEx.HelpMarker(T("Add, remove and reorder the actions ICE runs for this character. The order decides whether the retainer bell or the off-moon trip comes first, and the order of the stops during one off-moon trip."));
             ImGui.Dummy(new Vector2(0, 5));
 
             if (ov == null)
             {
-                // ── Global ──────────────────────────────────────────────────────
-                bool repairAtVendor = C.RepairAtVendor;
-                if (ImGui.Checkbox(T("Repair at Vendor"), ref repairAtVendor))
-                { C.RepairAtVendor = repairAtVendor; C.Save(); }
-
-                using (ImRaii.Disabled(repairAtVendor))
-                {
-                    bool selfRepairGather = C.SelfRepairGather;
-                    if (ImGui.Checkbox(T("Self Repair Gather"), ref selfRepairGather))
-                    { C.SelfRepairGather = selfRepairGather; C.Save(); }
-
-                    bool selfRepairCrafter = C.SelfRepairCrafter;
-                    if (ImGui.Checkbox(T("Self Repair Crafter"), ref selfRepairCrafter))
-                    { C.SelfRepairCrafter = selfRepairCrafter; C.Save(); }
-                }
-
-                float repairAmount = C.RepairPercent;
-                ImGui.SetNextItemWidth(150);
-                if (ImGui.SliderFloat("###Repair %", ref repairAmount, 0f, 99f, "%.0f%%"))
-                {
-                    if (C.RepairPercent != (int)repairAmount)
-                    { C.RepairPercent = (int)repairAmount; C.SaveDebounced(); }
-                }
-
-                bool repairAll = C.RepairAllGear;
-                if (ImGui.Checkbox(T("Repair all gear in bag"), ref repairAll))
-                { C.RepairAllGear = repairAll; C.Save(); }
-
-                bool stopDarkMatter = C.Stop_DarkMatter;
-                if (ImGui.Checkbox(T("Stop when below x dark matter"), ref stopDarkMatter))
-                { C.Stop_DarkMatter = stopDarkMatter; C.Save(); }
-
-                int minDM = C.Minimum_DarkMatter;
-                ImGui.SetNextItemWidth(200);
-                if (ImGui.InputInt(T("Minimum Grade 8 Dark Matter"), ref minDM, 1, 10))
-                { C.Minimum_DarkMatter = minDM; C.SaveDebounced(); }
-            }
-            else
-            {
-                // ── Per-character override ───────────────────────────────────────
-                OverrideField("RepairAtVendor", C.RepairAtVendor, ov.RepairAtVendor,
-                    v => ov.RepairAtVendor = v,
-                    current => {
-                        bool v = current;
-                        if (ImGui.Checkbox(T("Repair at Vendor"), ref v) && ov.RepairAtVendor.HasValue)
-                        { ov.RepairAtVendor = v; C.Save(); }
-                    });
-
-                bool effectiveVendor = ov.RepairAtVendor ?? C.RepairAtVendor;
-                using (ImRaii.Disabled(effectiveVendor))
-                {
-                    OverrideField("SelfRepairGather", C.SelfRepairGather, ov.SelfRepairGather,
-                        v => ov.SelfRepairGather = v,
-                        current => {
-                            bool v = current;
-                            if (ImGui.Checkbox(T("Self Repair Gather"), ref v) && ov.SelfRepairGather.HasValue)
-                            { ov.SelfRepairGather = v; C.Save(); }
-                        });
-
-                    OverrideField("SelfRepairCrafter", C.SelfRepairCrafter, ov.SelfRepairCrafter,
-                        v => ov.SelfRepairCrafter = v,
-                        current => {
-                            bool v = current;
-                            if (ImGui.Checkbox(T("Self Repair Crafter"), ref v) && ov.SelfRepairCrafter.HasValue)
-                            { ov.SelfRepairCrafter = v; C.Save(); }
-                        });
-                }
-
-                OverrideField("RepairPercent", C.RepairPercent, ov.RepairPercent,
-                    v => ov.RepairPercent = v,
-                    current => {
-                        float f = current;
-                        ImGui.SetNextItemWidth(150);
-                        if (ImGui.SliderFloat("###Repair %", ref f, 0f, 99f, "%.0f%%") && ov.RepairPercent.HasValue)
-                        { ov.RepairPercent = (int)f; C.SaveDebounced(); }
-                    });
-
-                OverrideField("RepairAllGear", C.RepairAllGear, ov.RepairAllGear,
-                    v => ov.RepairAllGear = v,
-                    current => {
-                        bool v = current;
-                        if (ImGui.Checkbox(T("Repair all gear in bag"), ref v) && ov.RepairAllGear.HasValue)
-                        { ov.RepairAllGear = v; C.Save(); }
-                    });
-
-                // Stop_DarkMatter is global-only — no per-character override
-                using (ImRaii.Disabled(true))
-                {
-                    bool stopDM = C.Stop_DarkMatter;
-                    ImGui.Checkbox(T("Stop when below x dark matter (Global)"), ref stopDM);
-                }
-                if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-                    ImGui.SetTooltip(T("This setting is global and shared across all characters.\nEdit it on the Global tab."));
-
-                OverrideField("Minimum_DarkMatter", C.Minimum_DarkMatter, ov.Minimum_DarkMatter,
-                    v => ov.Minimum_DarkMatter = v,
-                    current => {
-                        int v = current;
-                        ImGui.SetNextItemWidth(200);
-                        if (ImGui.InputInt(T("Minimum Grade 8 Dark Matter"), ref v, 1, 10) && ov.Minimum_DarkMatter.HasValue)
-                        { ov.Minimum_DarkMatter = v; C.SaveDebounced(); }
-                    });
-            }
-
-            PlayerHelper.GetItemCount(Utils.DarkMatter_8Id, out var dmCount);
-            ImGui.Text(T("Currently have: {0:N0} Grade 8 Dark Matter", dmCount));
-        }
-
-        // -------------------------------------------------------------------------
-        // Materia Settings
-        // -------------------------------------------------------------------------
-        private static void MateriaSettings(CharacterOverride? ov)
-        {
-            ImGuiEx.IconWithText(FontAwesomeIcon.Gem, T("Materia Settings"));
-            ImGui.Dummy(new Vector2(0, 5));
-
-            if (ov == null)
-            {
-                bool autoExtract = C.AutoExtractMateria;
-                if (ImGui.Checkbox(T("Auto Extract Materia"), ref autoExtract))
-                { C.AutoExtractMateria = autoExtract; C.Save(); }
-            }
-            else
-            {
-                OverrideField("AutoExtractMateria", C.AutoExtractMateria, ov.AutoExtractMateria,
-                    v => ov.AutoExtractMateria = v,
-                    current => {
-                        bool v = current;
-                        if (ImGui.Checkbox(T("Auto Extract Materia"), ref v) && ov.AutoExtractMateria.HasValue)
-                        { ov.AutoExtractMateria = v; C.Save(); }
-                    });
-            }
-            ImGuiEx.HelpMarker(T("Extracts materia from gear at 100% spiritbond while on a gathering or crafting job."));
-        }
-
-        // -------------------------------------------------------------------------
-        // Retainer Settings
-        // -------------------------------------------------------------------------
-        private static void RetainerSettings(CharacterOverride? ov)
-        {
-            ImGuiEx.IconWithText(FontAwesomeIcon.Users, T("Retainer Settings"));
-            ImGui.Dummy(new Vector2(0, 5));
-
-            if (ov == null)
-            {
-                bool autoRetainer = C.AutoRetainer;
-                if (ImGui.Checkbox(T("Auto Retainer"), ref autoRetainer))
-                { C.AutoRetainer = autoRetainer; C.Save(); }
-                ImGuiEx.HelpMarker(T("Before grabbing each mission, if any retainer venture is finished, uses Stellar Return, opens the hub summoning bell and lets AutoRetainer process the retainers, then continues ICE.\nRequires AutoRetainer (or AutoRetainer-CN). Only retainers enabled in AutoRetainer are processed."));
-            }
-            else
-            {
-                OverrideField("AutoRetainer", C.AutoRetainer, ov.AutoRetainer,
-                    v => ov.AutoRetainer = v,
-                    current => {
-                        bool v = current;
-                        if (ImGui.Checkbox(T("Auto Retainer"), ref v) && ov.AutoRetainer.HasValue)
-                        { ov.AutoRetainer = v; C.Save(); }
-                    });
-                ImGuiEx.HelpMarker(T("Before grabbing each mission, if any retainer venture is finished, uses Stellar Return, opens the hub summoning bell and lets AutoRetainer process the retainers, then continues ICE.\nRequires AutoRetainer (or AutoRetainer-CN). Only retainers enabled in AutoRetainer are processed."));
-            }
-            if (!P.AutoRetainer.Installed)
-                ImGui.TextColored(EColor.RedBright, T("AutoRetainer is not installed."));
-        }
-
-        // -------------------------------------------------------------------------
-        // Grand Company Turn-in Settings (leaves the moon, see Task_OffMoonErrands)
-        // -------------------------------------------------------------------------
-        private static void GrandCompanySettings(CharacterOverride? ov)
-        {
-            ImGuiEx.IconWithText(FontAwesomeIcon.Flag, T("Grand Company Turn-in"));
-            ImGui.Dummy(new Vector2(0, 5));
-
-            BoolSetting(ov, "AutoGCTurnin", T("GC Turn-in"),
-                C.AutoGCTurnin, v => C.AutoGCTurnin = v,
-                ov?.AutoGCTurnin, v => ov!.AutoGCTurnin = v);
-            PoweredBy("AutoRetainer", P.AutoRetainer.Installed);
-            ImGuiEx.HelpMarker(T("Before grabbing a mission, when free inventory slots drop to the value below, leaves the moon, lets AutoRetainer hand in Expert Delivery items at your Grand Company, then returns to the moon you came from.\nRequires AutoRetainer and Grand Company rank 6 or higher. Which items are handed in follows AutoRetainer's own GC delivery settings."));
-
-            ImGui.Indent();
-            if (ov == null)
-            {
-                int slots = C.GCTurnin_SlotsLeft;
-                if (SlotsInput(ref slots))
-                { C.GCTurnin_SlotsLeft = slots; C.SaveDebounced(); }
-            }
-            else
-            {
-                OverrideField("GCTurnin_SlotsLeft", C.GCTurnin_SlotsLeft, ov.GCTurnin_SlotsLeft,
-                    v => ov.GCTurnin_SlotsLeft = v,
-                    current => {
-                        int v = current;
-                        if (SlotsInput(ref v) && ov.GCTurnin_SlotsLeft.HasValue)
-                        { ov.GCTurnin_SlotsLeft = v; C.SaveDebounced(); }
-                    });
-            }
-            ImGuiEx.HelpMarker(T("Triggers when free inventory slots are at or below this value. If a turn-in frees no space, ICE waits until the inventory gets fuller before trying again."));
-
-            BoolSetting(ov, "GCTurnin_UseTicket", T("Use GC Aetheryte Ticket"),
-                C.GCTurnin_UseTicket, v => C.GCTurnin_UseTicket = v,
-                ov?.GCTurnin_UseTicket, v => ov!.GCTurnin_UseTicket = v);
-            ImGuiEx.HelpMarker(T("Uses the Grand Company aetheryte ticket when you have one. Otherwise teleports to the city aetheryte (Limsa Lominsa also needs Lifestream for the aethernet)."));
-            ImGui.Unindent();
-        }
-
-        private static bool SlotsInput(ref int slots)
-        {
-            ImGui.TextUnformatted(T("Inventory Slots Left @"));
-            ImGui.SameLine();
-            ImGui.SetNextItemWidth(120);
-            if (!ImGui.InputInt("##GCTurninSlotsLeft", ref slots, 1, 5))
-                return false;
-            slots = Math.Clamp(slots, 0, 140);
-            return true;
-        }
-
-        // -------------------------------------------------------------------------
-        // Glamour Storage Settings (leaves the moon, see Task_OffMoonErrands)
-        // -------------------------------------------------------------------------
-        private static void GlamourSettings(CharacterOverride? ov)
-        {
-            ImGuiEx.IconWithText(FontAwesomeIcon.Tshirt, T("Glamour Storage"));
-            ImGui.Dummy(new Vector2(0, 5));
-
-            BoolSetting(ov, "AutoGlamourDresser", T("Glamour Dresser"),
-                C.AutoGlamourDresser, v => C.AutoGlamourDresser = v,
-                ov?.AutoGlamourDresser, v => ov!.AutoGlamourDresser = v);
-            PoweredBy("Glamour Log", P.GlamourLog.Installed);
-            ImGuiEx.HelpMarker(T("Before grabbing a mission, if your inventory has outfit pieces that are not stored yet, goes to the inn room of your Grand Company city, lets Glamour Log store them into the glamour dresser, then returns to the moon you came from.\nStoring into the glamour dresser uses glamour prisms."));
-
-            BoolSetting(ov, "AutoArmoire", T("Armoire"),
-                C.AutoArmoire, v => C.AutoArmoire = v,
-                ov?.AutoArmoire, v => ov!.AutoArmoire = v);
-            PoweredBy("Glamour Log", P.GlamourLog.Installed);
-            ImGuiEx.HelpMarker(T("Before grabbing a mission, if your inventory has items that can be stored in the armoire, goes to the inn room of your Grand Company city, lets Glamour Log store them into the armoire, then returns to the moon you came from."));
-        }
-
-        private static void BoolSetting(CharacterOverride? ov, string id, string label, bool globalVal, Action<bool> setGlobal, bool? overrideVal, Action<bool?> setOverride)
-        {
-            if (ov == null)
-            {
-                bool v = globalVal;
-                if (ImGui.Checkbox(label, ref v))
-                { setGlobal(v); C.Save(); }
+                C.CharacterActions ??= CharacterAction.DefaultList();
+                CharacterActionList.Draw("Global", C.CharacterActions);
                 return;
             }
 
-            OverrideField(id, globalVal, overrideVal, setOverride,
-                current => {
-                    bool v = current;
-                    if (ImGui.Checkbox(label, ref v) && overrideVal.HasValue)
-                    { setOverride(v); C.Save(); }
-                });
-        }
+            bool hasOverride = ov.Actions != null;
+            if (ImGui.Checkbox(T("Use a separate action list for this character"), ref hasOverride))
+            {
+                // 开启时从全局列表复制一份作为起点
+                ov.Actions = hasOverride ? (C.CharacterActions ?? CharacterAction.DefaultList()).Select(a => a.Clone()).ToList() : null;
+                C.Save();
+            }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(T("When off, this character uses the list from the Global tab (shown read-only below)."));
 
-        private static void PoweredBy(string pluginName, bool installed)
-        {
-            ImGui.SameLine();
-            if (installed)
-            {
-                ImGui.TextDisabled("| powered by");
-                ImGui.SameLine(0, 4);
-                ImGui.TextColored(new Vector4(0.25f, 0.8f, 1f, 1f), pluginName);
-            }
+            if (ov.Actions != null)
+                CharacterActionList.Draw($"cid_{ov.GetHashCode()}", ov.Actions);
             else
-            {
-                ImGui.TextColored(EColor.RedBright, T("| requires {0}", pluginName));
-            }
+                CharacterActionList.Draw("GlobalReadOnly", C.CharacterActions ?? [], editable: false);
         }
 
         // -------------------------------------------------------------------------

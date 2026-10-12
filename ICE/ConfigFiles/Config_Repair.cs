@@ -7,6 +7,7 @@ namespace ICE.ConfigFiles;
 
 public partial class Config
 {
+    // Legacy: 修理 / 精炼设置已迁移到 CharacterActions（RepairAction / ExtractMateriaAction），只用于迁移
     public bool SelfRepairGather { get; set; } = true;
     public bool SelfRepairCrafter { get; set; } = false;
     public bool RepairAtVendor { get; set; } = false;

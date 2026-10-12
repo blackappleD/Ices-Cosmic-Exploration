@@ -49,17 +49,14 @@ namespace ICE.Scheduler.Tasks
 
         public static void Enqueue()
         {
-            if (Task_AutoRetainer.ShouldRun())
-            {
-                SchedulerMain.State = IceState.Retainer;
-                return;
-            }
+            // 自动雇员与出星球跑腿谁先执行，按角色动作列表中的先后顺序
+            static bool Retainer() => Task_AutoRetainer.ShouldRun() && SetState(IceState.Retainer);
+            static bool Errands() => Task_OffMoonErrands.ShouldRun() && SetState(IceState.OffMoonErrands);
+            static bool SetState(IceState state) { SchedulerMain.State = state; return true; }
 
-            if (Task_OffMoonErrands.ShouldRun())
-            {
-                SchedulerMain.State = IceState.OffMoonErrands;
+            bool retainerFirst = Task_AutoRetainer.ListIndex() <= Task_OffMoonErrands.ListIndex();
+            if (retainerFirst ? Retainer() || Errands() : Errands() || Retainer())
                 return;
-            }
 
             P.TaskManager.EnqueueMulti
                 (

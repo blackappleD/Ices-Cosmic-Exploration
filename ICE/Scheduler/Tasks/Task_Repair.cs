@@ -150,7 +150,7 @@ namespace ICE.Scheduler.Tasks
                     }
                     else if (EzThrottler.Throttle("Sending Repair Request", 2000))
                     {
-                        if (C.RepairAllGear)
+                        if (Char_Info.RepairAllGear)
                         {
                             IceLogging.Debug("Firing off callbacl to repair all", "Self Repair Task: All");
                             GenericHandlers.FireCallback("Repair", true, 1);
@@ -184,7 +184,7 @@ namespace ICE.Scheduler.Tasks
         }
         public unsafe static bool? OpenSelfRepair()
         {
-            if (C.Stop_DarkMatter && PlayerHelper.GetItemCount(Utils.DarkMatter_8Id, out var dmCount) && dmCount < Char_Info.Minimum_DarkMatter)
+            if (Char_Info.Stop_DarkMatter && PlayerHelper.GetItemCount(Utils.DarkMatter_8Id, out var dmCount) && dmCount < Char_Info.Minimum_DarkMatter)
             {
                 IceLogging.ChatInfo(T("Dark matter is below the minimum we want to keep, so self repair is stopping."), "[I.C.E.] Task: Self Repair");
                 SchedulerMain.State = IceState.Idle;

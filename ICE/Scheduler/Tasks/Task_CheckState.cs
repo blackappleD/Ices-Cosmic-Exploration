@@ -507,8 +507,8 @@ namespace ICE.Scheduler.Tasks
             bool RepairVendor = false;
             bool TurninRelic = false;
 
-            bool repairSelfGear = PlayerHelper.NeedsRepair(Char_Info.RepairPercent);
-            bool repairAllGear = PlayerHelper.AnyNeedsRepair(Char_Info.RepairPercent) && Char_Info.RepairAllGear;
+            bool repairSelfGear = Char_Info.RepairEnabled && PlayerHelper.NeedsRepair(Char_Info.RepairPercent);
+            bool repairAllGear = Char_Info.RepairEnabled && PlayerHelper.AnyNeedsRepair(Char_Info.RepairPercent) && Char_Info.RepairAllGear;
 
             var eventInfo = CosmicHandler.EventInfo();
             var worldState = eventInfo.Value.wksEvent;

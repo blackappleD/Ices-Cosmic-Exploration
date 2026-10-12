@@ -4,6 +4,7 @@ using Dalamud.Game.ClientState.Objects.Types;
 using ECommons.GameHelpers;
 using ECommons.Throttlers;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using ICE.ConfigFiles;
 using ICE.Scheduler.Handlers;
 using ICE.Utilities.Cosmic_Helper;
 using Lumina.Excel.Sheets;
@@ -41,7 +42,14 @@ namespace ICE.Scheduler.Tasks
             => GenericHelpers.TryGetAddonByName<FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase>("RetainerList", out var addon) && GenericHelpers.IsAddonReady(addon);
 
         public static bool Enabled
-            => Player.Available && C.Resolve((ulong)Player.CID, ov => ov.AutoRetainer, c => c.AutoRetainer);
+            => Player.Available && Char_Info.Action<AutoRetainerAction>() != null;
+
+        /// <summary>在角色动作列表中的位置，用于和出星球跑腿排先后；不在列表中时为 int.MaxValue。</summary>
+        public static int ListIndex()
+        {
+            int index = Char_Info.Actions.FindIndex(a => a is AutoRetainerAction && a.Enabled);
+            return index < 0 ? int.MaxValue : index;
+        }
 
         /// <summary>
         /// 在接取任务前调用：开启了自动雇员、AutoRetainer 已安装、当前没有进行中的任务，且有雇员探险已完成。

@@ -9,6 +9,11 @@ public partial class Config
 {
     public class CharacterOverride
     {
+        /// <summary>该角色专属的动作列表；null 表示沿用全局列表。</summary>
+        [Newtonsoft.Json.JsonProperty(ItemConverterType = typeof(CharacterActionConverter))]
+        public List<CharacterAction>? Actions { get; set; } = null;
+
+        // Legacy: 修理 / 精炼 / 雇员 / 军票 / 幻化 的旧覆写，只用于迁移到 Actions（见 MigrateCharacterActions）
         public bool? SelfRepairGather { get; set; } = null;
         public bool? SelfRepairCrafter { get; set; } = null;
         public bool? RepairAtVendor { get; set; } = null;

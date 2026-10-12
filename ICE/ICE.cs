@@ -64,6 +64,7 @@ public sealed partial class ICE : IDalamudPlugin
     {
         EzConfig.Migrate<Config>();
         config = EzConfig.Init<Config>();
+        config.MigrateCharacterActions();
 
         //IPC's that are used
         Lifestream = new();
