@@ -297,6 +297,12 @@ namespace ICE.Scheduler.Tasks
                 }
             }
 
+            // 同时写进 dalamud.log：ICE 自己的日志只在内存里，出问题后无从查证去了哪座城
+            string plan = $"Trip plan | GC: {Gc} ({(byte)Gc}) | Glamour Dresser: {(_doDresser ? $"{DresserConfig?.Inn} -> {InnCity(DresserConfig?.Inn ?? InnLocation.GrandCompany)}" : "-")}"
+                          + $" | Armoire: {(_doArmoire ? $"{ArmoireConfig?.Inn} -> {InnCity(ArmoireConfig?.Inn ?? InnLocation.GrandCompany)}" : "-")} | GC Turn-in: {_doGc}";
+            IceLogging.Info(plan, "[Off-Moon Errands]");
+            PluginLog.Information($"[Off-Moon Errands] {plan}");
+
             P.TaskManager.EnqueueMulti(steps.ToArray());
             EnqueueReturn();
         }
@@ -634,6 +640,7 @@ namespace ICE.Scheduler.Tasks
             if (!GenericHelpers.IsOccupied() && EzThrottler.Throttle("Errands_InnInteract", 3000))
             {
                 IceLogging.Info($"Talking to the innkeeper ({Player.DistanceTo(innkeeper.Position):F1}y away)", tag);
+                PluginLog.Information($"{tag} Talking to innkeeper {InnkeeperDataId(city)} in territory {Territory} for {city}");
                 Svc.Targets.Target = innkeeper;
                 Utils.InteractWithObject(innkeeper);
             }
@@ -1004,6 +1011,7 @@ namespace ICE.Scheduler.Tasks
                 return;
 
             IceLogging.Info($"Teleporting to aetheryte {aetheryteId}", tag);
+            PluginLog.Information($"{tag} Teleporting to aetheryte {aetheryteId} from territory {Territory}");
             Telepo.Instance()->Teleport(aetheryteId, 0);
         }
 

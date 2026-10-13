@@ -1,4 +1,6 @@
 using Dalamud.Interface.Utility.Raii;
+using ECommons.GameHelpers;
+using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
@@ -191,8 +193,22 @@ public abstract class GlamourStorageAction : CharacterAction
         InnLocation.Limsa => T("The Mizzenmast (Limsa Lominsa)"),
         InnLocation.Gridania => T("The Roost (Gridania)"),
         InnLocation.Uldah => T("The Hourglass (Ul'dah)"),
-        _ => T("Inn of your Grand Company city"),
+        _ => $"{T("Inn of your Grand Company city")} ({CurrentGcCityName()})",
     };
+
+    /// <summary>当前角色所属大国防联军的主城，直接显示出来，方便确认「所属大国防联军主城」指的是哪座城。</summary>
+    private static unsafe string CurrentGcCityName()
+    {
+        if (!Player.Available)
+            return T("not logged in");
+        return PlayerState.Instance()->GrandCompany switch
+        {
+            1 => T("Limsa Lominsa"),
+            2 => T("Gridania"),
+            3 => T("Ul'dah"),
+            _ => T("no Grand Company"),
+        };
+    }
 
     public override void DrawSettings()
     {
