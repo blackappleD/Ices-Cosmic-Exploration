@@ -7,6 +7,7 @@ using ECommons.GameHelpers;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using ICE.ConfigFiles;
 using ICE.Utilities.Cosmic_Helper;
@@ -298,7 +299,10 @@ namespace ICE.Scheduler.Tasks
             }
 
             // 同时写进 dalamud.log：ICE 自己的日志只在内存里，出问题后无从查证去了哪座城
-            string plan = $"Trip plan | GC: {Gc} ({(byte)Gc}) | Glamour Dresser: {(_doDresser ? $"{DresserConfig?.Inn} -> {InnCity(DresserConfig?.Inn ?? InnLocation.GrandCompany)}" : "-")}"
+            var ps = PlayerState.Instance();
+            var hotbar = RaptureHotbarModule.Instance();
+            string plan = $"Trip plan | GC: {Gc} ({(byte)Gc}) | StartTown: {ps->StartTown} | Hotbar GC: {(hotbar != null ? hotbar->GrandCompanyId : 0)}"
+                          + $" | GC rank: {ps->GetGrandCompanyRank()} | GC ranks: {string.Join("/", ps->GCRanks.ToArray())} | Glamour Dresser: {(_doDresser ? $"{DresserConfig?.Inn} -> {InnCity(DresserConfig?.Inn ?? InnLocation.GrandCompany)}" : "-")}"
                           + $" | Armoire: {(_doArmoire ? $"{ArmoireConfig?.Inn} -> {InnCity(ArmoireConfig?.Inn ?? InnLocation.GrandCompany)}" : "-")} | GC Turn-in: {_doGc}";
             IceLogging.Info(plan, "[Off-Moon Errands]");
             PluginLog.Information($"[Off-Moon Errands] {plan}");
