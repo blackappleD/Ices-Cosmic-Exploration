@@ -201,9 +201,15 @@ namespace ICE.Scheduler.Tasks
                     && C.MissionConfig.TryGetValue(entry.Key, out var entryConfig)
                     && entryConfig.Enabled);
 
+            var agendaScoreDoneJobs = AgendaScoreDoneJobs();
+
             foreach (var mission in CosmicHelper.SheetMissionDict)
             {
                 if (mission.Value.TerritoryId != Player.Territory.RowId)
+                    continue;
+
+                // Off-class provisionals/criticals for a job that already hit its agenda score goal would just overflow its score
+                if (!mission.Value.Jobs.Contains(Mission_Settings.SelectedJob) && mission.Value.Jobs.Any(agendaScoreDoneJobs.Contains))
                     continue;
 
                 bool provisional = mission.Value.IsProvisional;
@@ -381,6 +387,18 @@ namespace ICE.Scheduler.Tasks
                 IceLogging.Verbose($"Stardard tab missions job: {Mission_Settings.SelectedJob}");
                 return true;
             }
+        }
+        private static HashSet<uint> AgendaScoreDoneJobs()
+        {
+            if (C.SelectedMode != ModeSelect.AgendaMode)
+                return new();
+
+            var classInfo = CosmicHelper.Cosmic_ClassInfo();
+            return C.Cosmic_Agenda
+                .Where(x => x.SelectedOption == PlaylistOptions.ClassScore)
+                .Where(x => classInfo.TryGetValue(x.SelectedJob, out var info) && info.Score >= x.ClassScore)
+                .Select(x => x.SelectedJob)
+                .ToHashSet();
         }
         public static bool? OpenMissionUi()
         {
