@@ -1,22 +1,24 @@
 using ECommons.GameHelpers;
+using System.Collections.Generic;
 using static ICE.ConfigFiles.Config;
 
 namespace ICE.Utilities;
 
 /// <summary>
-/// 运行时长统计：只累计 SchedulerMain.State != Idle 的时间，按角色记到 C.CharacterRuntimes。
-/// 状态从 Idle 变为运行时开始新的一次运行，回到 Idle 时结束并保存。
+/// 运行时长统计：只累计 SchedulerMain.State != Idle 的时间，按角色记录。
+/// 总运行时长存到 C.CharacterRuntimes；本次运行时长只放在内存里，
+/// 停止插件、离开宇宙探索地图都不会清零，只有卸载插件 / 关闭游戏才清零。
 /// </summary>
 internal static class RuntimeTracker
 {
     private const long SaveIntervalMs = 60_000;
 
+    private static readonly Dictionary<ulong, double> _sessionSeconds = new();
+
     private static bool _running;
     private static ulong _cid;
     private static long _lastTick;
     private static long _lastSave;
-
-    internal static bool IsRunning => _running;
 
     internal static void Tick()
     {
@@ -29,8 +31,6 @@ internal static class RuntimeTracker
             _cid = Player.Available ? (ulong)Player.CID : 0;
             _lastTick = now;
             _lastSave = now;
-            if (_cid != 0)
-                Get(_cid).LastRunSeconds = 0;
             return;
         }
 
@@ -48,10 +48,7 @@ internal static class RuntimeTracker
 
         // 开始时角色还不可用（极少见），等角色可用后再归属
         if (_cid == 0 && Player.Available)
-        {
             _cid = (ulong)Player.CID;
-            Get(_cid).LastRunSeconds = 0;
-        }
 
         Accumulate(now);
 
@@ -78,9 +75,8 @@ internal static class RuntimeTracker
         if (_cid == 0 || delta <= 0)
             return;
 
-        var rt = Get(_cid);
-        rt.TotalSeconds += delta;
-        rt.LastRunSeconds += delta;
+        Get(_cid).TotalSeconds += delta;
+        _sessionSeconds[_cid] = SessionSeconds(_cid) + delta;
     }
 
     internal static CharacterRuntime Get(ulong cid)
@@ -90,12 +86,25 @@ internal static class RuntimeTracker
         return rt;
     }
 
+    internal static double SessionSeconds(ulong cid)
+        => _sessionSeconds.TryGetValue(cid, out var s) ? s : 0;
+
+    internal static double TotalSeconds(ulong cid)
+        => C.CharacterRuntimes.TryGetValue(cid, out var rt) ? rt.TotalSeconds : 0;
+
+    internal static void Reset(ulong cid)
+    {
+        _sessionSeconds.Remove(cid);
+        if (C.CharacterRuntimes.Remove(cid))
+            C.Save();
+    }
+
     /// <summary>该角色当前是否正在运行（用于界面高亮）。</summary>
     internal static bool IsRunningFor(ulong cid) => _running && _cid == cid;
 
     /// <summary>当前登录角色的本次运行时长。</summary>
-    internal static double CurrentCharacterRunSeconds
-        => Player.Available && C.CharacterRuntimes.TryGetValue((ulong)Player.CID, out var rt) ? rt.LastRunSeconds : 0;
+    internal static double CurrentCharacterSessionSeconds
+        => Player.Available ? SessionSeconds((ulong)Player.CID) : 0;
 
     internal static string Format(double seconds)
     {

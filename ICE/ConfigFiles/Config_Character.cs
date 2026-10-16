@@ -48,10 +48,8 @@ public partial class Config
     /// <summary>每个角色的实际运行时长（只计插件处于运行状态的时间），见 RuntimeTracker。</summary>
     public class CharacterRuntime
     {
-        /// <summary>累计运行秒数。</summary>
+        /// <summary>累计运行秒数（本次运行时长只在内存中，见 RuntimeTracker）。</summary>
         public double TotalSeconds { get; set; } = 0;
-        /// <summary>本次（运行中）或上一次运行的秒数。</summary>
-        public double LastRunSeconds { get; set; } = 0;
     }
 
     // 单独存放，删除角色页签（CharacterOverrides / KnownCharacters）时不会丢失统计

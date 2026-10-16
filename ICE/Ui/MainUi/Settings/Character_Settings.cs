@@ -153,21 +153,20 @@ namespace ICE.Ui.MainUi.Settings
         // -------------------------------------------------------------------------
         private static void RuntimeStats(ulong cid)
         {
-            C.CharacterRuntimes.TryGetValue(cid, out var rt);
-            double last = rt?.LastRunSeconds ?? 0;
-            double total = rt?.TotalSeconds ?? 0;
+            double session = RuntimeTracker.SessionSeconds(cid);
+            double total = RuntimeTracker.TotalSeconds(cid);
             bool running = RuntimeTracker.IsRunningFor(cid);
 
             ImGuiEx.IconWithText(FontAwesomeIcon.Clock, T("Runtime"));
-            ImGuiEx.HelpMarker(T("Only counts time while ICE is actually running on this character (from Start until it stops)."));
+            ImGuiEx.HelpMarker(T("Only counts time while ICE is actually running on this character. The current run keeps counting across stops and leaving the cosmic map, and only resets when the plugin or the game is closed."));
 
             ImGui.SameLine(0, 20);
-            ImGui.TextUnformatted(running ? T("Current run:") : T("Last run:"));
+            ImGui.TextUnformatted(T("Current run:"));
             ImGui.SameLine();
             if (running)
-                ImGui.TextColored(new Vector4(0.4f, 0.9f, 0.4f, 1f), RuntimeTracker.Format(last));
+                ImGui.TextColored(new Vector4(0.4f, 0.9f, 0.4f, 1f), RuntimeTracker.Format(session));
             else
-                ImGui.TextUnformatted(RuntimeTracker.Format(last));
+                ImGui.TextUnformatted(RuntimeTracker.Format(session));
 
             ImGui.SameLine(0, 20);
             ImGui.TextUnformatted(T("Total:"));
@@ -175,14 +174,10 @@ namespace ICE.Ui.MainUi.Settings
             ImGui.TextUnformatted(RuntimeTracker.Format(total));
 
             ImGui.SameLine(0, 20);
-            using (ImRaii.Disabled(running || rt == null || !ImGui.GetIO().KeyCtrl))
+            using (ImRaii.Disabled(running || (session <= 0 && total <= 0) || !ImGui.GetIO().KeyCtrl))
             {
-                if (ImGuiEx.IconButton(FontAwesomeIcon.Undo, $"##ResetRuntime_{cid}") && rt != null)
-                {
-                    rt.TotalSeconds = 0;
-                    rt.LastRunSeconds = 0;
-                    C.Save();
-                }
+                if (ImGuiEx.IconButton(FontAwesomeIcon.Undo, $"##ResetRuntime_{cid}"))
+                    RuntimeTracker.Reset(cid);
             }
             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
                 ImGui.SetTooltip(T("Hold CTRL and click to reset runtime stats"));
