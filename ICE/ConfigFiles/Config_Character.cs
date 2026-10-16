@@ -45,6 +45,18 @@ public partial class Config
     public Dictionary<ulong, CharacterOverride> CharacterOverrides { get; set; } = new();
     public Dictionary<ulong, string> KnownCharacters { get; set; } = new();
 
+    /// <summary>每个角色的实际运行时长（只计插件处于运行状态的时间），见 RuntimeTracker。</summary>
+    public class CharacterRuntime
+    {
+        /// <summary>累计运行秒数。</summary>
+        public double TotalSeconds { get; set; } = 0;
+        /// <summary>本次（运行中）或上一次运行的秒数。</summary>
+        public double LastRunSeconds { get; set; } = 0;
+    }
+
+    // 单独存放，删除角色页签（CharacterOverrides / KnownCharacters）时不会丢失统计
+    public Dictionary<ulong, CharacterRuntime> CharacterRuntimes { get; set; } = new();
+
     public T Resolve<T>(ulong cid, Func<CharacterOverride, T?> overrideProp, Func<Config, T> globalProp) where T : struct
         => CharacterOverrides.TryGetValue(cid, out var ov) && overrideProp(ov) is { } val
             ? val

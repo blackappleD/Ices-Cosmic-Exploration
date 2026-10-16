@@ -141,6 +141,8 @@ public sealed partial class ICE : IDalamudPlugin
 
     private void Tick(object _)
     {
+        RuntimeTracker.Tick();
+
         if (Player.Available && PlayerHelper.IsInCosmicZone())
         {
             if (EzThrottler.Throttle("Update Character Stats"))
@@ -207,6 +209,7 @@ public sealed partial class ICE : IDalamudPlugin
 
     public void Dispose()
     {
+        GenericHelpers.Safe(RuntimeTracker.Flush);
         GenericHelpers.Safe(() => Svc.Framework.Update -= Tick);
         GenericHelpers.Safe(() => Svc.PluginInterface.UiBuilder.Draw -= OnDraw);
         GenericHelpers.Safe(() => Svc.PluginInterface.UiBuilder.Draw -= windowSystem.Draw);

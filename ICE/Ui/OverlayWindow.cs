@@ -202,6 +202,16 @@ namespace ICE.Ui
                 ImGui.EndTooltip();
             }
 
+            // 本次运行时长（当前角色）
+            ImGui.SameLine();
+            var runText = RuntimeTracker.Format(RuntimeTracker.CurrentCharacterRunSeconds);
+            if (running)
+                ImGui.TextColored(new Vector4(0.4f, 0.9f, 0.4f, 1f), runText);
+            else
+                ImGui.TextDisabled(runText);
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(running ? T("Current run time") : T("Last run time"));
+
             ImGui.SameLine();
 
             if (CosmicHelper.SheetMissionDict.TryGetValue(CosmicHelper.CurrentLunarMission, out var missionName) && SchedulerMain.State != IceState.AbandonMission)
