@@ -35,6 +35,7 @@ public abstract class CharacterAction
         (typeof(RepairAction), () => new RepairAction()),
         (typeof(ExtractMateriaAction), () => new ExtractMateriaAction()),
         (typeof(AutoRetainerAction), () => new AutoRetainerAction()),
+        (typeof(AllaganMarketUndercutAction), () => new AllaganMarketUndercutAction()),
         (typeof(GCTurninAction), () => new GCTurninAction()),
         (typeof(GlamourDresserAction), () => new GlamourDresserAction()),
         (typeof(ArmoireAction), () => new ArmoireAction()),
@@ -157,6 +158,38 @@ public sealed class AutoRetainerAction : CharacterAction
     public override (string Display, string InternalName)? RequiredPlugin => ("AutoRetainer", IPC.AutoRetainerIPC.Name);
     public override string? HelpText => T("Before grabbing each mission, if any retainer venture is finished, uses Stellar Return, opens the hub summoning bell and lets AutoRetainer process the retainers, then continues ICE.\nRequires AutoRetainer (or AutoRetainer-CN). Only retainers enabled in AutoRetainer are processed.");
     public override bool HasConfig => false;
+}
+
+public sealed class AllaganMarketUndercutAction : CharacterAction
+{
+    public override string Name => T("Allagan Market (Auto Undercut)");
+    public override (string Display, string InternalName)? RequiredPlugin => ("Allagan Market", IPC.AllaganMarketIPC.Name);
+    public override string? HelpText => T("Before grabbing a mission, once the interval below has passed, uses Stellar Return, opens the hub summoning bell and lets Allagan Market reprice the listings, then continues ICE.\nOnly retainers with \"Auto Undercut\" ticked in Allagan Market are repriced; price limits follow Allagan Market's own settings. Requires the CN build of Allagan Market.\nWhen AutoRetainer (Retainers) is also due, both run during the same bell visit, AutoRetainer first.");
+
+    public int IntervalMinutes { get; set; } = 60;
+
+    public override void DrawSettings()
+    {
+        ImGui.AlignTextToFramePadding();
+        ImGui.TextUnformatted(T("Undercut every"));
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(120);
+        int interval = IntervalMinutes;
+        if (ImGui.InputInt("##UndercutInterval", ref interval, 5, 30))
+        { IntervalMinutes = Math.Clamp(interval, 5, 24 * 60); C.SaveDebounced(); }
+        ImGui.SameLine();
+        ImGui.TextUnformatted(T("minutes"));
+        ImGuiEx.HelpMarker(T("The first undercut runs at the first mission grab after ICE starts, then again each time this many minutes have passed."));
+
+        if (!P.AllaganMarket.Installed)
+            return;
+
+        int count = P.AllaganMarket.EnabledRetainerCount();
+        if (count > 0)
+            ImGui.TextDisabled(T("Retainers with Auto Undercut ticked: {0}", count));
+        else
+            ImGui.TextColored(EColor.RedBright, T("No retainer has Auto Undercut ticked in Allagan Market (or this Allagan Market build has no IPC)."));
+    }
 }
 
 public sealed class GCTurninAction : CharacterAction

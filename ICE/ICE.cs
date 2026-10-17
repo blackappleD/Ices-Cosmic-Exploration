@@ -52,6 +52,7 @@ public sealed partial class ICE : IDalamudPlugin
     internal GearsetterIPC Gearsetter;
     internal AutoRetainerIPC AutoRetainer;
     internal GlamourLogIPC GlamourLog;
+    internal AllaganMarketIPC AllaganMarket;
 
     public ICE(IDalamudPluginInterface pi)
     {
@@ -79,6 +80,7 @@ public sealed partial class ICE : IDalamudPlugin
         Gearsetter = new();
         AutoRetainer = new();
         GlamourLog = new();
+        AllaganMarket = new();
 
         // all the windows
         windowSystem = new();

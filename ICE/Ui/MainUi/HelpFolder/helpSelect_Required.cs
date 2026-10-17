@@ -48,6 +48,11 @@ ImGui.TextWrapped(T("This isn't required, but highly recommended for leveling up
             DrawAutoRetainerRequirement();
 
             ImGui.Separator();
+            ImGui.TextWrapped(T("Optional. Required for Allagan Market (Auto Undercut) (Character Settings). Only the CN build has the IPC ICE needs."));
+            ImGuiEx.IconWithText(FontAwesomeIcon.Coins, T("Allagan Market"));
+            HasPlugin(AllaganMarketIPC.RepoCN, AllaganMarketIPC.Name);
+
+            ImGui.Separator();
             ImGui.TextWrapped(T("Optional. Required for Glamour Dresser / Armoire (Character Settings). Install either the global or the CN version."));
             ImGuiEx.IconWithText(FontAwesomeIcon.Tshirt, T("Glamour Log"));
             DrawGlamourLogRequirement();
