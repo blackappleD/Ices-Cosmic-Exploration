@@ -1,6 +1,7 @@
 ﻿using Dalamud.Game.ClientState.Conditions;
 using ECommons.GameHelpers;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.Game.Event;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using ICE.Ui.Debug_Tabs.Debug_Ui;
 using ICE.Utilities.Cosmic_Helper;
@@ -146,6 +147,29 @@ namespace ICE.Scheduler.Tasks
 
         private static int StartedFishing = 0;
         private static int SafetyThrottle = 0;
+        private static long _startWaitSinceMs = 0;
+
+        private static unsafe void LogStartDiagnostics(long waitedMs)
+        {
+            try
+            {
+                var castStatus = ActionManager.Instance()->GetActionStatus(ActionType.Action, 289);
+                var handler = EventFramework.Instance() != null ? EventFramework.Instance()->EventHandlerModule.FishingEventHandler : null;
+                var handlerState = handler != null ? $"{handler->State} CanFish={handler->CanFish} ChangingPosition={handler->ChangingPosition}" : "null";
+                var bait = CosmicHelper.CurrentBait();
+                PlayerHelper.GetItemCount(bait, out var baitCount);
+                var conditions = string.Join(",", Enum.GetValues<ConditionFlag>().Where(f => Svc.Condition[f]).Distinct());
+                var ahState = P.AutoHook.Installed ? P.AutoHook.PluginState.ToString() : "not installed";
+
+                Svc.Log.Warning($"[Fishing Diag] Not fishing for {waitedMs / 1000}s | CastStatus(289)={castStatus} | Handler={handlerState} | " +
+                                $"Bait={bait} x{baitCount} | GP={Player.Object?.CurrentGp} | AH={ahState} | Fishable={_fishingDebug?.IsFishable()} | " +
+                                $"Pos={Player.Position:F2} Rot={Player.Rotation:F2} | Mission={CosmicHelper.CurrentLunarMission} | Conditions={conditions}");
+            }
+            catch (Exception ex)
+            {
+                Svc.Log.Error(ex, "[Fishing Diag] Failed to collect diagnostics");
+            }
+        }
 
         private static unsafe bool? FishCheckV2()
         {
@@ -154,6 +178,7 @@ namespace ICE.Scheduler.Tasks
             {
                 IceLogging.Info("We're currently in the middle of fishing, so we're going to wait for us to complete");
                 StartedFishing = 0;
+                _startWaitSinceMs = 0;
                 P.TaskManager.Enqueue(() => FinishFishing(), "Waiting for fishing to complete");
                 SafetyThrottle = 0;
                 return true;
@@ -259,9 +284,16 @@ namespace ICE.Scheduler.Tasks
                         IceLogging.Verbose($"+1 等待钓鱼实际开始中（可能在等待 GP/增益）... {StartedFishing}", handle);
                         Svc.Commands.ProcessCommand("/ahstart");
                     }
+
+                    // CN-MAINT: Diagnostics only. Dump why the cast is refused once we've been stuck here for a while.
+                    if (_startWaitSinceMs == 0)
+                        _startWaitSinceMs = Environment.TickCount64;
+                    else if (Environment.TickCount64 - _startWaitSinceMs > 5000 && EzThrottler.Throttle("Fishing start diagnostics", 5000))
+                        LogStartDiagnostics(Environment.TickCount64 - _startWaitSinceMs);
                 }
                 else
                 {
+                    _startWaitSinceMs = 0;
                     IceLogging.Verbose("We apperently aren't facing toward the fishing hole... or not close enough to one that we can actually start. So going to attempt to fix it", handle);
                     if (_fishingDebug.FindFishableLocation(out var fishablePos, searchSteps: 64))
                     {

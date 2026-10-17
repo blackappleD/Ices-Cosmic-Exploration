@@ -29,6 +29,7 @@ namespace ICE.IPC
         }
 
         [EzIPC] private readonly Func<bool> GetPluginState;
+        public bool PluginState => GetPluginState();
         [EzIPC] private Action<bool> SetPluginState;
 
         [EzIPC] private readonly Func<bool> GetAutoStartFishing;
