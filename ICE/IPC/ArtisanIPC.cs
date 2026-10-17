@@ -165,7 +165,7 @@ namespace ICE.IPC
             ArtisanSettings effectiveSettings;
             if (recipeSettings.UseGlobal)
             {
-                var global = isExpert ? C.Artisan_GlobalExpert : C.Artisan_GlobalStandard;
+                var global = isExpert ? Char_Info.Artisan_GlobalExpert : Char_Info.Artisan_GlobalStandard;
                 effectiveSettings = new ArtisanSettings
                 {
                     UseGlobal = true,
@@ -188,10 +188,10 @@ namespace ICE.IPC
             if (isLeveling)
                 effectiveSettings.ArtisanSolverType = ArtisanCraftType.ProgressOnly;
 
-            if (CraftSettings.TryGetValue(recipeId, out var cached) && ArtisanSettingsEqual(cached, effectiveSettings))
-                return;
-
-            LogArtisanSettingsChange(recipeId, missionId, isExpert, isLeveling, cached, effectiveSettings);
+            // Always push the settings: Artisan keeps them as temporary values that are lost whenever
+            // Artisan is reloaded (e.g. other plugins toggling it), so the cache is only used for logging.
+            if (!CraftSettings.TryGetValue(recipeId, out var cached) || !ArtisanSettingsEqual(cached, effectiveSettings))
+                LogArtisanSettingsChange(recipeId, missionId, isExpert, isLeveling, cached, effectiveSettings);
 
             AssignArtisanRecipe(recipeId, effectiveSettings, isExpert);
             CraftSettings[recipeId] = new ArtisanSettings
