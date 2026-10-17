@@ -69,6 +69,7 @@ namespace ICE.Scheduler.Tasks
 
         /// <summary>
         /// 在接取任务前调用：当前没有进行中的任务，且自动雇员或自动压价到期时返回 true，并记下本次要做哪些。
+        /// 同时开启了自动雇员（且已装 AutoRetainer）时，压价不单独跑传唤铃，只在收雇员时顺便压价（仍受压价间隔限制）。
         /// </summary>
         public static bool ShouldRun()
         {
@@ -76,7 +77,8 @@ namespace ICE.Scheduler.Tasks
                 return false;
 
             _runRetainers = RetainersDue();
-            _runUndercut = UndercutDue();
+            bool undercutWithRetainersOnly = Char_Info.Action<AutoRetainerAction>() != null && P.AutoRetainer.Installed;
+            _runUndercut = (_runRetainers || !undercutWithRetainersOnly) && UndercutDue();
             if (!_runRetainers && !_runUndercut)
                 return false;
 

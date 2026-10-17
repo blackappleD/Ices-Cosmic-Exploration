@@ -164,7 +164,7 @@ public sealed class AllaganMarketUndercutAction : CharacterAction
 {
     public override string Name => T("Allagan Market (Auto Undercut)");
     public override (string Display, string InternalName)? RequiredPlugin => ("Allagan Market", IPC.AllaganMarketIPC.Name);
-    public override string? HelpText => T("Before grabbing a mission, once the interval below has passed, uses Stellar Return, opens the hub summoning bell and lets Allagan Market reprice the listings, then continues ICE.\nOnly retainers with \"Auto Undercut\" ticked in Allagan Market are repriced; price limits follow Allagan Market's own settings. Requires the CN build of Allagan Market.\nWhen AutoRetainer (Retainers) is also due, both run during the same bell visit, AutoRetainer first.");
+    public override string? HelpText => T("Before grabbing a mission, once the interval below has passed, uses Stellar Return, opens the hub summoning bell and lets Allagan Market reprice the listings, then continues ICE.\nOnly retainers with \"Auto Undercut\" ticked in Allagan Market are repriced; price limits follow Allagan Market's own settings. Requires the CN build of Allagan Market.\nWhen AutoRetainer (Retainers) is also enabled, the undercut never makes its own trip: it only runs while ICE is at the bell collecting retainers (AutoRetainer first), and only if the interval below has passed.");
 
     public int IntervalMinutes { get; set; } = 60;
 
@@ -179,7 +179,7 @@ public sealed class AllaganMarketUndercutAction : CharacterAction
         { IntervalMinutes = Math.Clamp(interval, 5, 24 * 60); C.SaveDebounced(); }
         ImGui.SameLine();
         ImGui.TextUnformatted(T("minutes"));
-        ImGuiEx.HelpMarker(T("The first undercut runs at the first mission grab after ICE starts, then again each time this many minutes have passed."));
+        ImGuiEx.HelpMarker(T("The first undercut runs at the first mission grab after ICE starts, then again each time this many minutes have passed.\nWith AutoRetainer (Retainers) enabled, the undercut waits for the next retainer collection once this time has passed."));
 
         if (!P.AllaganMarket.Installed)
             return;
