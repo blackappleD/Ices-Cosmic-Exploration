@@ -100,8 +100,9 @@ namespace ICE.Scheduler.Tasks
                || Svc.Condition[ConditionFlag.BetweenAreas51]
                || !PlayerHelper.IsScreenReady();
 
-        private static bool InInnRoom
-            => Svc.Data.GetExcelSheet<TerritoryType>().TryGetRow(Territory, out var row) && row.TerritoryIntendedUse.RowId == 2;
+        // 旅馆房间（2）或大国防联军军营（30），两处都有时装衣柜和幻化衣柜
+        private static bool InStorageRoom
+            => Svc.Data.GetExcelSheet<TerritoryType>().TryGetRow(Territory, out var row) && row.TerritoryIntendedUse.RowId is 2 or 30;
 
         // -------------------------------------------------------------------------
         // Trigger
@@ -287,13 +288,13 @@ namespace ICE.Scheduler.Tasks
                 else if (action is ArmoireAction armoireAction && armoire)
                 {
                     armoire = false;
-                    AddInnSteps(steps, InnCity(armoireAction.Inn));
+                    AddRoomSteps(steps, armoireAction.Inn);
                     steps.Add(new(Timed(StoreArmoire, StoreTimeoutMs, "Store items in the armoire"), "Errands: Storing items in the armoire"));
                 }
                 else if (action is GlamourDresserAction dresserAction && dresser)
                 {
                     dresser = false;
-                    AddInnSteps(steps, InnCity(dresserAction.Inn));
+                    AddRoomSteps(steps, dresserAction.Inn);
                     steps.Add(new(Timed(StoreDresser, StoreTimeoutMs, "Store items in the glamour dresser"), "Errands: Storing items in the glamour dresser"));
                 }
             }
@@ -302,7 +303,7 @@ namespace ICE.Scheduler.Tasks
             var ps = PlayerState.Instance();
             var hotbar = RaptureHotbarModule.Instance();
             string plan = $"Trip plan | GC: {Gc} ({(byte)Gc}) | StartTown: {ps->StartTown} | Hotbar GC: {(hotbar != null ? hotbar->GrandCompanyId : 0)}"
-                          + $" | GC rank: {ps->GetGrandCompanyRank()} | GC ranks: {string.Join("/", ps->GCRanks.ToArray())} | Glamour Dresser: {(_doDresser ? $"{DresserConfig?.Inn} -> {InnCity(DresserConfig?.Inn ?? InnLocation.GrandCompany)}" : "-")}"
+                          + $" | GC rank: {ps->GetGrandCompanyRank()} | GC ranks: {string.Join("/", ps->GCRanks.ToArray())} | Squadron: {QuestManager.IsQuestComplete(SquadronUnlockQuest(Gc))} | Glamour Dresser: {(_doDresser ? $"{DresserConfig?.Inn} -> {InnCity(DresserConfig?.Inn ?? InnLocation.GrandCompany)}" : "-")}"
                           + $" | Armoire: {(_doArmoire ? $"{ArmoireConfig?.Inn} -> {InnCity(ArmoireConfig?.Inn ?? InnLocation.GrandCompany)}" : "-")} | GC Turn-in: {_doGc}";
             IceLogging.Info(plan, "[Off-Moon Errands]");
             PluginLog.Information($"[Off-Moon Errands] {plan}");
@@ -311,10 +312,28 @@ namespace ICE.Scheduler.Tasks
             EnqueueReturn();
         }
 
-        private static void AddInnSteps(List<TaskManagerTask> steps, GrandCompany city)
+        private static void AddRoomSteps(List<TaskManagerTask> steps, InnLocation inn)
         {
+            var city = InnCity(inn);
+            if (UseBarracks(inn))
+            {
+                steps.Add(new(Timed(() => TravelToCity(city), TravelTimeoutMs, "Travel to the Grand Company city"), "Errands: Travel to the Grand Company city"));
+                steps.Add(new(Timed(() => EnterBarracks(city), InnTimeoutMs, "Enter the barracks"), "Errands: Entering the barracks"));
+                return;
+            }
             steps.Add(new(Timed(() => TravelToCity(city), TravelTimeoutMs, "Travel to the inn's city"), "Errands: Travel to the inn's city"));
             steps.Add(new(Timed(() => EnterInn(city), InnTimeoutMs, "Enter the inn room"), "Errands: Entering the inn room"));
+        }
+
+        /// <summary>选了军营且已解锁冒险者小队时去军营，否则退回所属大国防联军主城的旅馆。</summary>
+        private static bool UseBarracks(InnLocation inn)
+        {
+            if (inn != InnLocation.Barracks)
+                return false;
+            if (QuestManager.IsQuestComplete(SquadronUnlockQuest(Gc)))
+                return true;
+            IceLogging.Warning("The squadron is not unlocked on this character, using the inn of your Grand Company city instead of the barracks", "[Off-Moon Errands]");
+            return false;
         }
 
         private static void EnqueueReturn()
@@ -534,6 +553,43 @@ namespace ICE.Scheduler.Tasks
             _ => 178u,
         };
 
+        // 冒险者小队解锁任务「荣光与分队同在」
+        private static uint SquadronUnlockQuest(GrandCompany city) => city switch
+        {
+            GrandCompany.Maelstrom => 67926u,
+            GrandCompany.TwinAdder => 67925u,
+            _ => 67927u,
+        };
+
+        private static uint BarracksTerritory(GrandCompany city) => city switch
+        {
+            GrandCompany.Maelstrom => 536u,
+            GrandCompany.TwinAdder => 534u,
+            _ => 535u,
+        };
+
+        // 主城里军营入口的门（在军队补给处旁）
+        private static uint BarracksEntranceDataId(GrandCompany city) => city switch
+        {
+            GrandCompany.Maelstrom => 2007527u,
+            GrandCompany.TwinAdder => 2006962u,
+            _ => 2007529u,
+        };
+
+        private static Vector3 BarracksEntranceLocation(GrandCompany city) => city switch
+        {
+            GrandCompany.Maelstrom => new(98.02f, 41.29f, 62.82f),
+            GrandCompany.TwinAdder => new(-80.22f, 0.50f, -6.99f),
+            _ => new(-153.29f, 5.24f, -98.03f),
+        };
+
+        private static uint BarracksExitDoorDataId(GrandCompany city) => city switch
+        {
+            GrandCompany.Maelstrom => 2007528u,
+            GrandCompany.TwinAdder => 2006963u,
+            _ => 2007530u,
+        };
+
         private static uint InnExitDoorDataId(GrandCompany city) => city switch
         {
             GrandCompany.Maelstrom => 2001010u,
@@ -566,7 +622,7 @@ namespace ICE.Scheduler.Tasks
         {
             string tag = "[Off-Moon Errands: Travel]";
 
-            if (Territory == CityTerritory(city) || (innCounts && Territory == InnTerritory(city)))
+            if (Territory == CityTerritory(city) || (innCounts && (Territory == InnTerritory(city) || Territory == BarracksTerritory(city))))
                 return !InTransit;
 
             if (InTransit || GenericHelpers.IsOccupied() || Player.IsAnimationLocked)
@@ -611,6 +667,13 @@ namespace ICE.Scheduler.Tasks
             if (InTransit)
                 return false;
 
+            if (Territory == BarracksTerritory(city))
+            {
+                if (!ExitRoom(BarracksExitDoorDataId(city), tag))
+                    TravelToCity(city, innCounts: false);
+                return false;
+            }
+
             if (Territory != CityTerritory(city))
             {
                 TravelToCity(city);
@@ -651,33 +714,101 @@ namespace ICE.Scheduler.Tasks
             return false;
         }
 
-        /// <summary>在本国主城旅馆里时走门出去；在别的旅馆里交给 TravelToCity 直接传送。</summary>
+        private static bool? EnterBarracks(GrandCompany city)
+        {
+            string tag = "[Off-Moon Errands: Barracks]";
+
+            if (Territory == BarracksTerritory(city))
+                return !InTransit && Player.Interactable;
+
+            if (InTransit)
+                return false;
+
+            if (Territory == InnTerritory(city))
+            {
+                if (!ExitRoom(InnExitDoorDataId(city), tag))
+                    TravelToCity(city, innCounts: false);
+                return false;
+            }
+
+            if (Territory != CityTerritory(city))
+            {
+                TravelToCity(city);
+                return false;
+            }
+
+            if (GenericHelpers.TryGetAddonMaster<SelectYesno>("SelectYesno", out var yesno) && yesno.IsAddonReady)
+            {
+                if (EzThrottler.Throttle("Errands_BarracksYesno", 500))
+                    yesno.Yes();
+                return false;
+            }
+            if (GenericHelpers.TryGetAddonMaster<SelectString>("SelectString", out var select) && select.IsAddonReady)
+            {
+                if (select.Entries.Length > 0 && EzThrottler.Throttle("Errands_BarracksSelect", 500))
+                    select.Entries[0].Select();
+                return false;
+            }
+            if (GenericHelpers.TryGetAddonMaster<Talk>("Talk", out var talk) && talk.IsAddonReady)
+            {
+                if (EzThrottler.Throttle("Errands_BarracksTalk", 200))
+                    talk.Click();
+                return false;
+            }
+
+            Utils.TryGetObjectByDataId(BarracksEntranceDataId(city), out var door);
+            var target = door?.Position ?? BarracksEntranceLocation(city);
+            if (!Approach(target, EObjRange) || door == null)
+                return false;
+
+            if (!GenericHelpers.IsOccupied() && EzThrottler.Throttle("Errands_BarracksInteract", 3000))
+            {
+                IceLogging.Info("Entering the barracks", tag);
+                PluginLog.Information($"{tag} Entering barracks door {BarracksEntranceDataId(city)} in territory {Territory} for {city}");
+                Svc.Targets.Target = door;
+                Utils.InteractWithObject(door);
+            }
+            return false;
+        }
+
+        /// <summary>在本国主城的旅馆或军营里时走门出去；在别处交给 TravelToCity 直接传送。</summary>
         private static bool? LeaveInnForGc()
         {
-            if (!InInnRoom || Territory != InnTerritory(Gc))
+            uint exitDoor;
+            if (Territory == InnTerritory(Gc))
+                exitDoor = InnExitDoorDataId(Gc);
+            else if (Territory == BarracksTerritory(Gc))
+                exitDoor = BarracksExitDoorDataId(Gc);
+            else
                 return true;
 
             if (InTransit)
                 return false;
 
+            // 找不到门就交给 TravelToCity 传送
+            return !ExitRoom(exitDoor, "[Off-Moon Errands: Inn]");
+        }
+
+        /// <summary>走到出口门交互并确认离开。返回 false 表示找不到门。</summary>
+        private static bool ExitRoom(uint doorDataId, string tag)
+        {
             if (GenericHelpers.TryGetAddonMaster<SelectYesno>("SelectYesno", out var yesno) && yesno.IsAddonReady)
             {
                 if (EzThrottler.Throttle("Errands_DoorYesno", 500))
                     yesno.Yes();
-                return false;
+                return true;
             }
 
-            // 找不到门就交给 TravelToCity 传送
-            if (!Utils.TryGetObjectByDataId(InnExitDoorDataId(Gc), out var door) || door == null)
-                return true;
+            if (!Utils.TryGetObjectByDataId(doorDataId, out var door) || door == null)
+                return false;
 
             if (Approach(door.Position, EObjRange) && !GenericHelpers.IsOccupied() && EzThrottler.Throttle("Errands_DoorInteract", 3000))
             {
-                IceLogging.Info("Leaving the inn room", "[Off-Moon Errands: Inn]");
+                IceLogging.Info("Leaving the room", tag);
                 Svc.Targets.Target = door;
                 Utils.InteractWithObject(door);
             }
-            return false;
+            return true;
         }
 
         // -------------------------------------------------------------------------
@@ -732,8 +863,8 @@ namespace ICE.Scheduler.Tasks
                 return false;
             }
 
-            if (!InInnRoom)
-                return Fail($"Not in an inn room, can not use the {name}");
+            if (!InStorageRoom)
+                return Fail($"Not in an inn room or the barracks, can not use the {name}");
 
             // Glamour Log 会遍历所有可存物品（不依赖界面当前分类），没有可存的会立即结束
             if (uiReady())
@@ -764,7 +895,7 @@ namespace ICE.Scheduler.Tasks
 
             var target = FindByEventId(eventId);
             if (target == null)
-                return Fail($"Could not find the {name} in the inn room");
+                return Fail($"Could not find the {name} in the room");
 
             if (Approach(target.Position, EObjRange) && !GenericHelpers.IsOccupied() && EzThrottler.Throttle("Errands_GlamourInteract", 3000))
             {

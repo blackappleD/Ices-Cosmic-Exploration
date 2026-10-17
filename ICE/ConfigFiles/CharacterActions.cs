@@ -88,6 +88,8 @@ public enum InnLocation
     Limsa = 1,
     Gridania = 2,
     Uldah = 3,
+    // 所属大国防联军的军营（冒险者小队），房间里同样有时装衣柜和幻化衣柜
+    Barracks = 4,
 }
 
 public sealed class RepairAction : CharacterAction
@@ -193,6 +195,7 @@ public abstract class GlamourStorageAction : CharacterAction
         InnLocation.Limsa => T("The Mizzenmast (Limsa Lominsa)"),
         InnLocation.Gridania => T("The Roost (Gridania)"),
         InnLocation.Uldah => T("The Hourglass (Ul'dah)"),
+        InnLocation.Barracks => $"{T("Grand Company barracks (Squadron)")} ({CurrentGcCityName()})",
         _ => $"{T("Inn of your Grand Company city")} ({CurrentGcCityName()})",
     };
 
@@ -230,7 +233,7 @@ public abstract class GlamourStorageAction : CharacterAction
             }
             ImGui.EndCombo();
         }
-        ImGuiEx.HelpMarker(T("Which inn's innkeeper to talk to. The inn room has both the armoire and the glamour dresser."));
+        ImGuiEx.HelpMarker(T("Where to store the items. Inn rooms and the Grand Company barracks both have the armoire and the glamour dresser.\nThe barracks needs the squadron unlocked; without it the inn of your Grand Company city is used."));
     }
 }
 
