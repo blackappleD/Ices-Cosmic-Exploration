@@ -570,6 +570,7 @@ internal static class L10n
         ["Set to current location"] = "设置为当前位置",
         ["Add Location"] = "添加位置",
         ["No location set"] = "未设置位置",
+        ["Only the currently logged-in character can set its location"] = "只能为当前登录的角色设置位置",
         ["New Path Name"] = "新路径名称",
         ["Create New Path"] = "创建新路径",
         ["Remove"] = "移除",

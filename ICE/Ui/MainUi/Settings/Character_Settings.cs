@@ -34,6 +34,8 @@ namespace ICE.Ui.MainUi.Settings
                         ImGui.Separator();
                         MountSelection(null);
                         ImGui.Separator();
+                        PersonalReturnSpot(0, null);
+                        ImGui.Separator();
                         RelicJobSwap(null);
                     }
                     ImGui.EndChild();
@@ -62,6 +64,8 @@ namespace ICE.Ui.MainUi.Settings
                             ArtisanSettingsV2(ov);
                             ImGui.Separator();
                             MountSelection(ov);
+                            ImGui.Separator();
+                            PersonalReturnSpot(cid, ov);
                             ImGui.Separator();
                             RelicJobSwap(ov);
 
@@ -901,6 +905,74 @@ namespace ICE.Ui.MainUi.Settings
             _mountSearchText = "";
             _mountDisplayOffset = 0;
             ImGui.OpenPopup("Mount Options");
+        }
+
+        // -------------------------------------------------------------------------
+        // Personal return spot (where crafter missions go back to)
+        // -------------------------------------------------------------------------
+        private static void PersonalReturnSpot(ulong cid, CharacterOverride? ov)
+        {
+            ImGuiEx.IconWithText(FontAwesomeIcon.MapPin, T("Crafting Return Spot"));
+            ImGui.Dummy(new(0, 5));
+
+            if (ov == null)
+            {
+                DrawReturnSpot("global", C.PersonalReturnSpot, v => C.PersonalReturnSpot = v, C.CrafterLocations,
+                    Player.Available ? null : T("Only the currently logged-in character can set its location"));
+                return;
+            }
+
+            bool hasOverride = ov.CrafterLocations != null;
+            if (ImGui.Checkbox("##ovReturnSpot", ref hasOverride))
+            {
+                if (hasOverride) { ov.PersonalReturnSpot = C.PersonalReturnSpot; ov.CrafterLocations = new(C.CrafterLocations); }
+                else { ov.PersonalReturnSpot = null; ov.CrafterLocations = null; }
+                C.Save();
+            }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(hasOverride
+                    ? T("Override active — click to inherit from Global")
+                    : T("Click to override this setting for this character"));
+
+            ImGui.SameLine();
+            bool isCurrent = Player.Available && (ulong)Player.CID == cid;
+            using (ImRaii.Disabled(!hasOverride))
+            {
+                DrawReturnSpot($"cid_{cid}",
+                    hasOverride ? ov.PersonalReturnSpot ?? false : C.PersonalReturnSpot,
+                    v => { if (ov.CrafterLocations != null) ov.PersonalReturnSpot = v; },
+                    ov.CrafterLocations ?? C.CrafterLocations,
+                    isCurrent ? null : T("Only the currently logged-in character can set its location"));
+            }
+        }
+
+        private static void DrawReturnSpot(string id, bool enabled, Action<bool> setEnabled, Dictionary<uint, Vector3> locations, string? setDisabledReason)
+        {
+            if (ImGui.Checkbox(T("Use personal return spots") + $"##returnSpot_{id}", ref enabled))
+            {
+                setEnabled(enabled);
+                C.Save();
+            }
+            if (!enabled)
+                return;
+
+            var territory = Player.Territory.RowId;
+            bool hasLocation = locations.TryGetValue(territory, out var location);
+
+            ImGui.SameLine();
+            using (ImRaii.Disabled(setDisabledReason != null))
+            {
+                if (ImGui.Button((hasLocation ? T("Set to current location") : T("Add Location")) + $"##returnSpotSet_{id}"))
+                {
+                    locations[territory] = Player.Position;
+                    C.Save();
+                }
+            }
+            if (setDisabledReason != null && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                ImGui.SetTooltip(setDisabledReason);
+
+            ImGui.SameLine();
+            ImGui.Text(hasLocation ? $"({location.X:N1}, {location.Y:N1}, {location.Z:N1})" : T("No location set"));
         }
 
         // -------------------------------------------------------------------------

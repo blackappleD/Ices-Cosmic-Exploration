@@ -47,6 +47,10 @@ namespace ICE.Utilities
         public static float MountRadius => G.MountRadius;
         public static float DismountRadius => G.DismountRadius;
 
+        // Personal return spot — toggle and locations are overridden together
+        public static bool PersonalReturnSpot => Ov?.CrafterLocations != null ? Ov.PersonalReturnSpot ?? false : G.PersonalReturnSpot;
+        public static Dictionary<uint, Vector3> CrafterLocations => Ov?.CrafterLocations ?? G.CrafterLocations;
+
         // Relic
         public static bool Relic_SwapJob => Ov?.Relic_SwapJob ?? G.Relic_SwapJob;
         public static uint Relic_BattleJob => Ov?.Relic_BattleJob ?? G.Relic_BattleJob;

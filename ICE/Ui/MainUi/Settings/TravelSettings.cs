@@ -25,8 +25,6 @@ namespace ICE.Ui.MainUi.Settings.Settings_Table
             Separator();
             StuckSettings();
 
-            Separator();
-            CraftingLocations();
 
             Separator();
             FishingLocations();
@@ -253,44 +251,6 @@ if (ImGui.RadioButton(T("Retarget"), C.RetargetIfStuck))
             ImGui.SameLine();
             ImGui.Text(T("ms stuck"));
             if (!unstuckEnabled) ImGui.EndDisabled();
-        }
-        private static void CraftingLocations()
-        {
-            ImGuiEx.IconWithText(FontAwesomeIcon.MapPin, T("Crafting Return Spot"));
-            ImGui.Dummy(new Vector2(0, 5));
-
-            bool usePersonalLocations = C.PersonalReturnSpot;
-if (ImGui.Checkbox(T("Use personal return spots"), ref usePersonalLocations))
-            {
-                C.PersonalReturnSpot = usePersonalLocations;
-                C.Save();
-            }
-            if (usePersonalLocations)
-            {
-                var territory = Player.Territory.RowId;
-                var location = Player.Position;
-                ImGui.SameLine();
-                if (C.CrafterLocations.TryGetValue(territory, out var moonLoc))
-                {
-if (ImGui.Button(T("Set to current location")))
-                    {
-                        C.CrafterLocations[territory] = location;
-                        C.Save();
-                    }
-                    ImGui.SameLine();
-                    ImGui.Text($"({moonLoc.X:N1}, {moonLoc.Y:N1}, {moonLoc.Z:N1})");
-                }
-                else
-                {
-if (ImGui.Button(T("Add Location")))
-                    {
-                        C.CrafterLocations[territory] = Player.Position;
-                        C.Save();
-                    }
-                    ImGui.SameLine();
-ImGui.Text(T("No location set"));
-                }
-            }
         }
         private static void DailyRoutinesExtensions()
         {

@@ -1248,7 +1248,7 @@ namespace ICE.Scheduler.Tasks
                     return true;
                 }
             }
-            else if (C.PersonalReturnSpot)
+            else if (Char_Info.PersonalReturnSpot)
             {
                 if (sheetInfo.Attributes.HasFlag(MissionAttributes.Critical))
                 {
@@ -1258,7 +1258,7 @@ namespace ICE.Scheduler.Tasks
                 else
                 {
                     var territory = Player.Territory.RowId;
-                    if (C.CrafterLocations.TryGetValue(territory, out var location))
+                    if (Char_Info.CrafterLocations.TryGetValue(territory, out var location))
                     {
                         if (TryDailyRoutinesTeleportToPersonalReturn(location, tag))
                         {

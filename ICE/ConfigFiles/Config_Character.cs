@@ -28,6 +28,10 @@ public partial class Config
         public uint? MountId { get; set; } = null;
         public string? MountName { get; set; } = null;
 
+        // 个人返回点：CrafterLocations 非 null 即表示该角色覆盖了全局（开关与位置一起覆盖）
+        public bool? PersonalReturnSpot { get; set; } = null;
+        public Dictionary<uint, Vector3>? CrafterLocations { get; set; } = null;
+
         public bool? Relic_SwapJob { get; set; } = null;
         public uint? Relic_BattleJob { get; set; } = null;
         public bool? Relic_Stylist { get; set; } = null;
